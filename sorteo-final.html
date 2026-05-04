@@ -50,11 +50,13 @@
           const num = String(i).padStart(2, "0");
           const btn = document.createElement("button");
           btn.id = "num-" + num;
-          btn.textContent = num;
           if (reservas[num]) {
             btn.className = "numero-btn ocupado";
+            const nombreCorto = reservas[num].nombre.split(" ")[0];
+            btn.innerHTML = "<span style=\'display:block;font-size:.58em;font-weight:400;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:95%\'>" + nombreCorto + "</span><span>" + num + "</span>";
           } else {
             btn.className = "numero-btn disponible";
+            btn.textContent = num;
             btn.onclick = () => abrirModal(num);
           }
           grid.appendChild(btn);
@@ -97,6 +99,9 @@
         });
 
         mostrarToast("Numero " + numeroSeleccionado + " reservado para " + nombre + "!");
+        // Enviar WhatsApp automaticamente
+        const msg = "Hola, mi nombre es " + nombre + ". Escogi el numero " + numeroSeleccionado + " en el sorteo Arte Corporal. Por favor regálame tu número de cuenta para realizarte el pago de $10.000 COP. Gracias!";
+        window.open("https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(msg), "_blank");
         cerrarModal();
       };
 
@@ -169,7 +174,14 @@
       }
 
       window.contactoWhatsApp = () => {
-        const msg = "Hola, vengo del sorteo ARTE CORPORAL. Quiero mas informacion.";
+        const nombre = document.getElementById("nombreInput") && document.getElementById("nombreInput").value.trim();
+        const numero = numeroSeleccionado;
+        let msg;
+        if (nombre && numero) {
+          msg = "Hola, mi nombre es " + nombre + ". Escogi el numero " + numero + " en el sorteo Arte Corporal. Por favor regálame tu número de cuenta para realizarte el pago de $10.000 COP. Gracias!";
+        } else {
+          msg = "Hola, participo en el sorteo Arte Corporal. Por favor regálame tu número de cuenta para realizarte el pago. Gracias!";
+        }
         window.open("https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(msg), "_blank");
       };
 
@@ -376,7 +388,7 @@
       <li style="color:var(--verde);font-weight:600">La meta es jugarlo en 15 dias!</li>
     </ul>
     <p style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,209,102,.2)">
-      Escoge tu numero, tocalo y sigue las instrucciones para oficializar tu reserva.
+      Revisa la disponibilidad en la cuadrícula inferior, elige tu número y toca el enlace de abajo para enviarme un mensaje directo y oficializar tu reserva.
     </p>
   </div>
 
@@ -436,7 +448,7 @@
     </div>
     <div class="form-group">
       <label>Tu numero de telefono:</label>
-      <input type="tel" id="telefonoInput" placeholder="Ej: 3017844700" required pattern="[0-9]{10}">
+      <input type="tel" id="telefonoInput" placeholder="Ej: 3100000000" required pattern="[0-9]{10}">
       <small>Solo visible para el administrador.</small>
     </div>
     <div class="modal-buttons">
