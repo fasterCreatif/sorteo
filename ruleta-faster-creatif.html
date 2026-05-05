@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <meta name="theme-color" content="#080810"/>
+  <meta name="theme-color" content="#080f0a"/>
   <title>FASTER CREATIF · Ruleta</title>
 
   <!-- React + Babel (no build step needed) -->
@@ -12,28 +12,30 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
     html,body,#root{height:100%;width:100%;}
-    body{background:#080810;-webkit-tap-highlight-color:transparent;}
+    body{background:#080f0a;-webkit-tap-highlight-color:transparent;}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-    @keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.35)}50%{box-shadow:0 0 0 14px rgba(255,215,0,0)}}
-    @keyframes pSpin{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.4)}50%{box-shadow:0 0 0 16px rgba(255,215,0,0)}}
+    @keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(0,209,102,0.35)}50%{box-shadow:0 0 0 14px rgba(0,209,102,0)}}
+    @keyframes pSpin{0%,100%{box-shadow:0 0 0 0 rgba(0,209,102,0.4)}50%{box-shadow:0 0 0 16px rgba(0,209,102,0)}}
     @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(4px)}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes shimmer{0%,100%{opacity:1;text-shadow:0 0 30px rgba(255,215,0,0.9),0 0 60px rgba(255,165,0,0.5)}50%{opacity:0.85;text-shadow:0 0 50px rgba(255,215,0,1),0 0 90px rgba(255,165,0,0.8)}}
+    @keyframes shimmer{0%,100%{opacity:1;text-shadow:0 0 30px rgba(0,209,102,0.9),0 0 60px rgba(0,168,77,0.5)}50%{opacity:0.85;text-shadow:0 0 50px rgba(0,209,102,1),0 0 90px rgba(0,168,77,0.8)}}
     @keyframes lineGlow{0%,100%{opacity:0.4}50%{opacity:1}}
     @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
     @keyframes popIn{0%{transform:scale(0) rotate(-18deg);opacity:0}70%{transform:scale(1.08) rotate(2deg)}100%{transform:scale(1);opacity:1}}
-    @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(255,215,0,0.5)}50%{text-shadow:0 0 40px rgba(255,215,0,0.9)}}
-    input:focus{border-color:#C9A227!important;box-shadow:0 0 0 2px rgba(201,162,39,0.18)!important;outline:none;}
+    @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(0,209,102,0.5)}50%{text-shadow:0 0 40px rgba(0,209,102,0.9)}}
+    input:focus{border-color:#00d166!important;box-shadow:0 0 0 2px rgba(0,209,102,0.18)!important;outline:none;}
     button:active{opacity:0.85!important;}
     table{border-collapse:collapse;width:100%}
-    th{background:rgba(201,162,39,0.12);color:#C9A227;font-size:10px;letter-spacing:1.5px;padding:9px 10px;text-align:left;border-bottom:1px solid #2A1A08}
+    th{background:rgba(0,209,102,0.1);color:#00d166;font-size:10px;letter-spacing:1.5px;padding:9px 10px;text-align:left;border-bottom:1px solid #0a2a1a}
     td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#B8A880}
     tr:hover td{background:rgba(255,215,0,0.03)}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-track{background:transparent}
-    ::-webkit-scrollbar-thumb{background:#3A2A10;border-radius:4px}
+    ::-webkit-scrollbar-thumb{background:#0a3a1a;border-radius:4px}
   </style>
 </head>
 <body>
@@ -74,15 +76,15 @@ const sendToNetlify = (playerName, prizeLabel, timestamp) => {
 };
 
 const DEFAULT_PRIZES = [
-  { label:"10% OFF",      color:"#4A0E0E", textColor:"#FFD700", prob:30  },
-  { label:"15% OFF",      color:"#0D1B2A", textColor:"#FFD700", prob:25  },
-  { label:"-20% IDEA",    color:"#1A1A3E", textColor:"#FFD700", prob:10  },
-  { label:"2×1 TATTOOS",  color:"#2A0A3A", textColor:"#FFD700", prob:15  },
-  { label:"KIT CUIDADO",  color:"#0A2A1A", textColor:"#FFD700", prob:4.5 },
-  { label:"DISEÑO FREE",  color:"#1A2A0A", textColor:"#FFD700", prob:4.5 },
-  { label:"50% OFF",      color:"#2A1A00", textColor:"#FFD700", prob:5   },
-  { label:"TATTOO PORT.", color:"#2A0A2A", textColor:"#FFD700", prob:3   },
-  { label:"TATTOO MINI",  color:"#001A2A", textColor:"#FFD700", prob:3   },
+  { label:"10% OFF",      color:"#0a1a0f", textColor:"#00d166", prob:35  },
+  { label:"15% OFF",      color:"#0D1B2A", textColor:"#00d166", prob:30  },
+  { label:"-20% IDEA",    color:"#0a1a2a", textColor:"#00d166", prob:14  },
+  { label:"2x1 TATTOOS",  color:"#1a0a2a", textColor:"#00d166", prob:12  },
+  { label:"KIT CUIDADO",  color:"#0A2A1A", textColor:"#00d166", prob:4   },
+  { label:"DISENO FREE",  color:"#1a2a0a", textColor:"#00d166", prob:3   },
+  { label:"50% OFF",      color:"#1a1a00", textColor:"#00d166", prob:1   },
+  { label:"TATTOO PORT.", color:"#1a0a1a", textColor:"#00d166", prob:0.5 },
+  { label:"TATTOO MINI",  color:"#001a2a", textColor:"#00d166", prob:0.5 },
 ];
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
@@ -131,13 +133,13 @@ function drawWheel(canvas, angle, prizes) {
     const W=canvas.width, cx=W/2, cy=W/2, r=cx-16, n=prizes.length, arc=(2*Math.PI)/n;
     ctx.clearRect(0,0,W,W);
     const g = ctx.createRadialGradient(cx,cy,r-4,cx,cy,r+20);
-    g.addColorStop(0,"rgba(255,215,0,0.5)"); g.addColorStop(1,"rgba(255,215,0,0)");
+    g.addColorStop(0,"rgba(255,215,0,0.5)"); g.addColorStop(1,"rgba(0,209,102,0)");
     ctx.beginPath(); ctx.arc(cx,cy,r+14,0,2*Math.PI); ctx.fillStyle=g; ctx.fill();
     for (let i=0; i<n; i++) {
       const sa=angle+arc*i, ea=sa+arc;
       ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,sa,ea); ctx.closePath();
       ctx.fillStyle=prizes[i].color; ctx.fill();
-      ctx.strokeStyle="#C9A227"; ctx.lineWidth=2; ctx.stroke();
+      ctx.strokeStyle="#00d166"; ctx.lineWidth=2; ctx.stroke();
       ctx.save(); ctx.translate(cx,cy); ctx.rotate(sa+arc/2);
       ctx.textAlign="right"; ctx.fillStyle=prizes[i].textColor||"#FFD700";
       const l=prizes[i].label.length;
@@ -148,12 +150,12 @@ function drawWheel(canvas, angle, prizes) {
     for (let i=0; i<n; i++) {
       const a=angle+arc*i;
       ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
-      ctx.beginPath(); ctx.arc(r,0,4,0,2*Math.PI); ctx.fillStyle="#FFD700"; ctx.fill(); ctx.restore();
+      ctx.beginPath(); ctx.arc(r,0,4,0,2*Math.PI); ctx.fillStyle="#00d166"; ctx.fill(); ctx.restore();
     }
     const h=ctx.createRadialGradient(cx-3,cy-3,2,cx,cy,20);
-    h.addColorStop(0,"#FFF8CC"); h.addColorStop(1,"#A0780A");
+    h.addColorStop(0,"#ccffe8"); h.addColorStop(1,"#00a84d");
     ctx.beginPath(); ctx.arc(cx,cy,20,0,2*Math.PI); ctx.fillStyle=h; ctx.fill();
-    ctx.strokeStyle="#7A5C00"; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle="#007a3d"; ctx.lineWidth=2; ctx.stroke();
     ctx.fillStyle="#8B0000"; ctx.font="bold 14px serif";
     ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("★",cx,cy);
     return true;
@@ -310,37 +312,37 @@ function App() {
 
   const S = {
     root:{minHeight:"100vh",background:"#080810",display:"flex",flexDirection:"column",
-      alignItems:"center",justifyContent:"center",fontFamily:"'Georgia',serif",
-      color:"#E8DCC8",padding:"16px",
-      backgroundImage:"radial-gradient(ellipse at 25% 15%,rgba(139,0,0,0.18) 0%,transparent 55%),radial-gradient(ellipse at 75% 85%,rgba(15,44,74,0.22) 0%,transparent 55%)",
+      alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif",
+      color:"#e0f0e8",padding:"16px",
+      backgroundImage:"radial-gradient(ellipse at 25% 15%,rgba(0,100,50,0.15) 0%,transparent 55%),radial-gradient(ellipse at 75% 85%,rgba(0,80,40,0.15) 0%,transparent 55%)",
     },
-    card:{width:"100%",maxWidth:400,background:"rgba(14,8,4,0.97)",borderRadius:18,
-      border:"1px solid #C9A227",
-      boxShadow:"0 0 50px rgba(201,162,39,0.12),inset 0 0 80px rgba(0,0,0,0.5)",overflow:"hidden"},
-    hdr:{background:"linear-gradient(160deg,#1c0808 0%,#080818 100%)",
-      borderBottom:"2px solid #C9A227",padding:"20px 24px 16px",textAlign:"center"},
-    title:{fontSize:21,fontWeight:700,color:"#FFD700",letterSpacing:2,
-      textShadow:"0 0 24px rgba(255,215,0,0.45)",margin:0},
-    sub:{fontSize:11,color:"#8A7050",letterSpacing:3,marginTop:4,textTransform:"uppercase"},
+    card:{width:"100%",maxWidth:400,background:"rgba(8,14,10,0.97)",borderRadius:18,
+      border:"1px solid #00d166",
+      boxShadow:"0 0 50px rgba(0,209,102,0.12),inset 0 0 80px rgba(0,0,0,0.5)",overflow:"hidden"},
+    hdr:{background:"linear-gradient(160deg,#0a1a0a 0%,#080810 100%)",
+      borderBottom:"2px solid #00d166",padding:"20px 24px 16px",textAlign:"center"},
+    title:{fontSize:21,fontWeight:700,color:"#00d166",letterSpacing:3,fontFamily:"'Bebas Neue',sans-serif",
+      textShadow:"0 0 24px rgba(0,209,102,0.45)",margin:0},
+    sub:{fontSize:11,color:"#4a7a5a",letterSpacing:3,marginTop:4,textTransform:"uppercase"},
     body:{padding:"22px 20px"},
-    lbl:{display:"block",fontSize:10,letterSpacing:2,color:"#8A7050",marginBottom:7,textTransform:"uppercase"},
-    inp:{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.035)",
-      border:"1px solid #3A2A10",borderRadius:9,padding:"13px 14px",color:"#E8DCC8",
-      fontSize:16,fontFamily:"Georgia,serif",outline:"none"},
-    inpSm:{boxSizing:"border-box",background:"rgba(255,255,255,0.035)",
-      border:"1px solid #3A2A10",borderRadius:7,padding:"8px 10px",color:"#E8DCC8",
-      fontSize:13,fontFamily:"Georgia,serif",outline:"none"},
+    lbl:{display:"block",fontSize:10,letterSpacing:2,color:"#4a7a5a",marginBottom:7,textTransform:"uppercase"},
+    inp:{width:"100%",boxSizing:"border-box",background:"rgba(0,209,102,0.04)",
+      border:"1px solid #1a3a2a",borderRadius:9,padding:"13px 14px",color:"#e0f0e8",
+      fontSize:16,fontFamily:"'DM Sans',sans-serif",outline:"none"},
+    inpSm:{boxSizing:"border-box",background:"rgba(0,209,102,0.04)",
+      border:"1px solid #1a3a2a",borderRadius:7,padding:"8px 10px",color:"#e0f0e8",
+      fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none"},
     gold:{width:"100%",padding:"14px",marginTop:14,
-      background:"linear-gradient(135deg,#A0720A 0%,#FFD700 50%,#A0720A 100%)",
-      border:"none",borderRadius:10,color:"#150900",fontSize:15,fontWeight:700,
-      letterSpacing:2,cursor:"pointer",fontFamily:"Georgia,serif",
-      boxShadow:"0 4px 22px rgba(255,215,0,0.28)"},
-    outline:{padding:"8px 18px",background:"transparent",border:"1px solid #C9A227",
-      borderRadius:8,color:"#C9A227",fontSize:13,cursor:"pointer",fontFamily:"Georgia,serif"},
+      background:"linear-gradient(135deg,#00a84d 0%,#00d166 50%,#00a84d 100%)",
+      border:"none",borderRadius:10,color:"#000",fontSize:15,fontWeight:700,
+      letterSpacing:2,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+      boxShadow:"0 4px 22px rgba(0,209,102,0.28)"},
+    outline:{padding:"8px 18px",background:"transparent",border:"1px solid #00d166",
+      borderRadius:8,color:"#00d166",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"},
     err:{background:"rgba(139,0,0,0.18)",border:"1px solid rgba(139,0,0,0.5)",
       borderRadius:9,padding:"10px 14px",marginTop:10,fontSize:13,color:"#FF7070"},
     tab:{padding:"8px 16px",background:"transparent",border:"none",
-      borderRadius:"8px 8px 0 0",fontSize:12,cursor:"pointer",fontFamily:"Georgia,serif",letterSpacing:1},
+      borderRadius:"8px 8px 0 0",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",letterSpacing:1},
   };
 
   // ── REGISTER ──────────────────────────────────────────────────────────────────
@@ -353,7 +355,7 @@ function App() {
           <p style={S.sub}>Gira y gana un premio especial 🎡</p>
         </div>
         <div style={S.body}>
-          <p style={{textAlign:"center",color:"#8A7050",fontSize:13,margin:"0 0 22px",lineHeight:1.7}}>
+          <p style={{textAlign:"center",color:"#4a7a5a",fontSize:13,margin:"0 0 22px",lineHeight:1.7}}>
             Ingresa tu nombre y número de celular,<br/>gira la ruleta y descubre lo que ganaste ✨
           </p>
           <label style={S.lbl}>Tu Nombre</label>
@@ -406,31 +408,31 @@ function App() {
       {/* FASTER CREATIF title */}
       <div style={{textAlign:"center",marginBottom:14,userSelect:"none"}}>
         <div style={{
-          fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,fontFamily:"'Georgia',serif",
-          letterSpacing:"0.18em",color:"#FFD700",animation:"shimmer 3s ease-in-out infinite",
-          textShadow:"0 0 30px rgba(255,215,0,0.9),0 0 60px rgba(255,165,0,0.5),0 2px 0 rgba(0,0,0,0.6)",
+          fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,fontFamily:"'DM Sans',sans-serif",
+          letterSpacing:"0.18em",color:"#00d166",animation:"shimmer 3s ease-in-out infinite",
+          textShadow:"0 0 30px rgba(0,209,102,0.9),0 0 60px rgba(0,168,77,0.5),0 2px 0 rgba(0,0,0,0.6)",
           lineHeight:1,
         }}>FASTER CREATIF</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:7}}>
-          <div style={{height:1,width:40,background:"linear-gradient(to right,transparent,#C9A227)",animation:"lineGlow 3s ease-in-out infinite"}}/>
-          <span style={{color:"#C9A227",fontSize:14,animation:"lineGlow 3s ease-in-out infinite"}}>✦</span>
-          <div style={{height:1,width:40,background:"linear-gradient(to left,transparent,#C9A227)",animation:"lineGlow 3s ease-in-out infinite"}}/>
+          <div style={{height:1,width:40,background:"linear-gradient(to right,transparent,#00d166)",animation:"lineGlow 3s ease-in-out infinite"}}/>
+          <span style={{color:"#00d166",fontSize:14,animation:"lineGlow 3s ease-in-out infinite"}}>✦</span>
+          <div style={{height:1,width:40,background:"linear-gradient(to left,transparent,#00d166)",animation:"lineGlow 3s ease-in-out infinite"}}/>
         </div>
       </div>
 
       <div style={S.card}>
         <div style={S.hdr}>
           <h1 style={{...S.title,fontSize:18}}>🎡 Ruleta FASTER CREATIF</h1>
-          <p style={{...S.sub,marginTop:4}}>Hola, <span style={{color:"#FFD700"}}>{playerName}</span>!</p>
+          <p style={{...S.sub,marginTop:4}}>Hola, <span style={{color:"#00d166"}}>{playerName}</span>!</p>
         </div>
         <div style={{...S.body,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:16}}>
-          <div style={{width:"100%",background:"rgba(255,215,0,0.05)",
-            border:"1px solid rgba(201,162,39,0.25)",borderRadius:12,
+          <div style={{width:"100%",background:"rgba(0,209,102,0.05)",
+            border:"1px solid rgba(0,209,102,0.25)",borderRadius:12,
             padding:"14px 16px",marginBottom:16,animation:"fadeUp 0.5s ease forwards"}}>
-            <p style={{margin:"0 0 8px",fontSize:13,color:"#C9A227",fontWeight:700}}>¿Cómo funciona?</p>
-            <p style={{margin:"4px 0",fontSize:13,color:"#A89070",lineHeight:1.6}}>1️⃣ Dale click al botón y gira.</p>
-            <p style={{margin:"4px 0",fontSize:13,color:"#A89070",lineHeight:1.6}}>2️⃣ Toma captura de pantalla apenas ganes y envíala <strong style={{color:"#FFD700"}}>(obligatorio)</strong>.</p>
-            <p style={{margin:"4px 0",fontSize:13,color:"#A89070",lineHeight:1.6}}>3️⃣ Tienes <strong style={{color:"#FFD700"}}>15 días</strong> para redimirlo.</p>
+            <p style={{margin:"0 0 8px",fontSize:13,color:"#00d166",fontWeight:700}}>¿Cómo funciona?</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>1️⃣ Dale click al botón y gira.</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>2️⃣ Toma captura de pantalla apenas ganes y envíala <strong style={{color:"#00d166"}}>(obligatorio)</strong>.</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>3️⃣ Tienes <strong style={{color:"#00d166"}}>15 días</strong> para redimirlo.</p>
             <p style={{margin:"10px 0 0",fontSize:15,textAlign:"center"}}>¡Mucha suerte! 🍀</p>
           </div>
 
@@ -445,14 +447,14 @@ function App() {
             }}/>
             <canvas ref={canvasCb} width={wSize} height={wSize}
               style={{display:"block",marginTop:8,borderRadius:"50%",
-                boxShadow:"0 0 30px rgba(201,162,39,0.2)",background:"rgba(20,10,4,0.9)"}}/>
+                boxShadow:"0 0 30px rgba(0,209,102,0.2)",background:"rgba(8,20,12,0.9)"}}/>
             {!canvasOk&&(
               <div style={{position:"absolute",top:8,left:2,width:wSize,height:wSize,
                 borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-                flexDirection:"column",background:"rgba(14,8,4,0.92)",
+                flexDirection:"column",background:"rgba(8,14,10,0.92)",
                 border:"2px dashed #3A2A10",pointerEvents:"none"}}>
                 <div style={{fontSize:28,marginBottom:6}}>🎡</div>
-                <p style={{fontSize:11,color:"#8A7050",margin:0}}>Cargando...</p>
+                <p style={{fontSize:11,color:"#4a7a5a",margin:0}}>Cargando...</p>
               </div>
             )}
           </div>
@@ -481,25 +483,25 @@ function App() {
         <div style={S.hdr}><h1 style={{...S.title,fontSize:18}}>🎡 FASTER CREATIF</h1></div>
         <div style={{...S.body,textAlign:"center"}}>
           <div style={{fontSize:60,animation:"float 3s ease-in-out infinite",marginBottom:8}}>🎊</div>
-          <h2 style={{color:"#FFD700",fontSize:20,margin:"0 0 6px",animation:"glow 2s ease-in-out infinite"}}>
+          <h2 style={{color:"#00d166",fontSize:20,margin:"0 0 6px",animation:"glow 2s ease-in-out infinite"}}>
             ¡Felicitaciones, {playerName}!
           </h2>
-          <p style={{color:"#8A7050",fontSize:13,marginBottom:18}}>Tu premio es:</p>
+          <p style={{color:"#4a7a5a",fontSize:13,marginBottom:18}}>Tu premio es:</p>
           <div style={{background:"linear-gradient(135deg,#1A0A00,#080818)",
-            border:"2px solid #FFD700",borderRadius:16,padding:"22px 20px",
+            border:"2px solid #00d166",borderRadius:16,padding:"22px 20px",
             animation:"popIn 0.65s cubic-bezier(0.175,0.885,0.32,1.275) forwards",
-            boxShadow:"0 0 40px rgba(255,215,0,0.22)",marginBottom:18}}>
+            boxShadow:"0 0 40px rgba(0,209,102,0.22)",marginBottom:18}}>
             <div style={{fontSize:44,marginBottom:10}}>🏆</div>
-            <p style={{color:"#FFD700",fontSize:28,fontWeight:700,margin:0,letterSpacing:1}}>
+            <p style={{color:"#00d166",fontSize:28,fontWeight:700,margin:0,letterSpacing:1}}>
               {prize?.label}
             </p>
           </div>
           <div style={{background:"rgba(139,0,0,0.12)",border:"1px solid rgba(139,0,0,0.35)",
             borderRadius:11,padding:"13px 16px",marginBottom:18}}>
-            <p style={{fontSize:13,color:"#A89070",margin:0,lineHeight:1.8}}>
+            <p style={{fontSize:13,color:"#7ab88a",margin:0,lineHeight:1.8}}>
               📸 Toma captura de esta pantalla y envíala<br/>
               para reclamar tu premio.<br/>
-              <strong style={{color:"#C9A227"}}>¡Válido por 15 días!</strong>
+              <strong style={{color:"#00d166"}}>¡Válido por 15 días!</strong>
             </p>
           </div>
           <button style={S.gold}
@@ -517,18 +519,18 @@ function App() {
       <div style={{...S.card,maxWidth:520}}>
         <div style={{...S.hdr,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 20px"}}>
           <div>
-            <h1 style={{...S.title,fontSize:16,margin:0}}>🔐 Panel Admin</h1>
+            <h1 style={{...S.title,fontSize:16,margin:0,color:"#00d166"}}>🔐 Panel Admin</h1>
             <p style={{...S.sub,marginTop:3}}>{history.length} participante{history.length!==1?"s":""}</p>
           </div>
           <button style={S.outline} onClick={()=>setView("register")}>Salir</button>
         </div>
 
-        <div style={{display:"flex",borderBottom:"1px solid #2A1A08",background:"rgba(0,0,0,0.2)"}}>
+        <div style={{display:"flex",borderBottom:"1px solid #0a2a1a",background:"rgba(0,0,0,0.2)"}}>
           {[["history","📋 Historial"],["prizes","🎁 Premios"]].map(([id,lbl])=>(
             <button key={id} style={{
               ...S.tab,
-              color:adminTab===id?"#FFD700":"#8A7050",
-              borderBottom:adminTab===id?"2px solid #FFD700":"2px solid transparent",
+              color:adminTab===id?"#00d166":"#4a7a5a",
+              borderBottom:adminTab===id?"2px solid #00d166":"2px solid transparent",
               fontWeight:adminTab===id?700:400,
             }} onClick={()=>{
               setAdminTab(id);
@@ -541,7 +543,7 @@ function App() {
         {adminTab==="history"&&(
           <div style={{padding:"12px 0"}}>
             {history.length===0?(
-              <p style={{textAlign:"center",color:"#8A7050",fontSize:14,padding:"28px 0"}}>
+              <p style={{textAlign:"center",color:"#4a7a5a",fontSize:14,padding:"28px 0"}}>
                 Aún no hay participantes.
               </p>
             ):(
@@ -552,11 +554,11 @@ function App() {
                     <tbody>
                       {history.map((h,i)=>(
                         <tr key={i}>
-                          <td style={{color:"#554433",fontSize:11}}>{history.length-i}</td>
-                          <td style={{color:"#E0CCA8",fontWeight:600}}>{h.name}<br/><span style={{color:"#C9A227",fontSize:10}}>📞 {h.phone||"—"}</span></td>
-                          <td><span style={{background:"rgba(255,215,0,0.08)",border:"1px solid rgba(201,162,39,0.3)",
-                            borderRadius:6,padding:"2px 7px",color:"#FFD700",fontSize:11}}>{h.prize}</span></td>
-                          <td style={{fontSize:11,color:"#554433"}}>{fmt(h.ts)}</td>
+                          <td style={{color:"#3a6a4a",fontSize:11}}>{history.length-i}</td>
+                          <td style={{color:"#c8e8d0",fontWeight:600}}>{h.name}<br/><span style={{color:"#00d166",fontSize:10}}>📞 {h.phone||"—"}</span></td>
+                          <td><span style={{background:"rgba(0,209,102,0.08)",border:"1px solid rgba(0,209,102,0.3)",
+                            borderRadius:6,padding:"2px 7px",color:"#00d166",fontSize:11}}>{h.prize}</span></td>
+                          <td style={{fontSize:11,color:"#3a6a4a"}}>{fmt(h.ts)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -569,11 +571,11 @@ function App() {
                       const cnt=history.filter(h=>h.prize===p.label).length;
                       if(!cnt)return null;
                       return(
-                        <div key={p.label} style={{background:"rgba(255,255,255,0.025)",
-                          border:"1px solid #1E1408",borderRadius:9,padding:"8px 12px"}}>
-                          <div style={{fontSize:10,color:"#554433"}}>{p.label}</div>
-                          <div style={{fontSize:20,fontWeight:700,color:"#FFD700"}}>
-                            {cnt}<span style={{fontSize:11,color:"#8A7050",fontWeight:400}}> {cnt===1?"vez":"veces"}</span>
+                        <div key={p.label} style={{background:"rgba(0,209,102,0.03)",
+                          border:"1px solid #0a2010",borderRadius:9,padding:"8px 12px"}}>
+                          <div style={{fontSize:10,color:"#3a6a4a"}}>{p.label}</div>
+                          <div style={{fontSize:20,fontWeight:700,color:"#00d166"}}>
+                            {cnt}<span style={{fontSize:11,color:"#4a7a5a",fontWeight:400}}> {cnt===1?"vez":"veces"}</span>
                           </div>
                         </div>
                       );
@@ -591,22 +593,22 @@ function App() {
               <p style={{...S.sub,margin:0}}>Total probabilidad:</p>
               <span style={{fontWeight:700,fontSize:14,
                 color:Math.abs(totProb-100)<0.1?"#4AFF80":"#FF7070"}}>
-                {totProb.toFixed(1)}% <span style={{fontSize:10,color:"#554433"}}>(debe ser 100)</span>
+                {totProb.toFixed(1)}% <span style={{fontSize:10,color:"#3a6a4a"}}>(debe ser 100)</span>
               </span>
             </div>
 
             {editPrizes.map((p,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:7,
-                background:"rgba(255,255,255,0.025)",borderRadius:9,
-                border:"1px solid #1E1408",padding:"7px 9px"}}>
+                background:"rgba(0,209,102,0.03)",borderRadius:9,
+                border:"1px solid #0a2010",padding:"7px 9px"}}>
                 <input style={{...S.inpSm,flex:"1 1 80px",minWidth:0}}
                   value={p.label} onChange={e=>updEP(i,"label",e.target.value)} maxLength={18}/>
                 <input style={{...S.inpSm,width:50,textAlign:"center"}}
                   type="number" min="0.1" max="100" step="0.5"
                   value={p.prob} onChange={e=>updEP(i,"prob",e.target.value)}/>
-                <span style={{fontSize:10,color:"#554433",flexShrink:0}}>%</span>
+                <span style={{fontSize:10,color:"#3a6a4a",flexShrink:0}}>%</span>
                 <input type="color" value={p.color} onChange={e=>updEP(i,"color",e.target.value)}
-                  style={{width:26,height:26,border:"1px solid #3A2A10",borderRadius:5,
+                  style={{width:26,height:26,border:"1px solid #1a3a2a",borderRadius:5,
                     cursor:"pointer",background:"none",padding:2,flexShrink:0}}/>
                 <button onClick={()=>remEP(i)}
                   style={{background:"rgba(139,0,0,0.3)",border:"1px solid rgba(139,0,0,0.4)",
@@ -615,9 +617,9 @@ function App() {
               </div>
             ))}
 
-            <div style={{background:"rgba(201,162,39,0.05)",border:"1px dashed rgba(201,162,39,0.22)",
+            <div style={{background:"rgba(0,209,102,0.05)",border:"1px dashed rgba(0,209,102,0.22)",
               borderRadius:10,padding:"12px 10px 10px",marginTop:12}}>
-              <p style={{...S.sub,marginBottom:9,color:"#C9A227"}}>+ Agregar premio</p>
+              <p style={{...S.sub,marginBottom:9,color:"#00d166"}}>+ Agregar premio</p>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 <input style={{...S.inpSm,flex:"1 1 90px"}}
                   value={newLabel} onChange={e=>setNewLabel(e.target.value)}
@@ -626,7 +628,7 @@ function App() {
                   type="number" min="0.1" max="100" step="0.5"
                   value={newProb} onChange={e=>setNewProb(e.target.value)} placeholder="%"/>
                 <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
-                  style={{width:34,height:34,border:"1px solid #3A2A10",borderRadius:5,
+                  style={{width:34,height:34,border:"1px solid #1a3a2a",borderRadius:5,
                     cursor:"pointer",background:"none",padding:2}}/>
                 <button onClick={addPrize} style={{...S.outline,padding:"7px 14px",whiteSpace:"nowrap"}}>
                   Agregar
@@ -641,7 +643,7 @@ function App() {
                 💾 GUARDAR PREMIOS
               </button>
             </div>
-            {saveMsg&&<p style={{textAlign:"center",color:"#4AFF80",fontSize:13,marginTop:8}}>{saveMsg}</p>}
+            {saveMsg&&<p style={{textAlign:"center",color:"#00d166",fontSize:13,marginTop:8}}>{saveMsg}</p>}
             {Math.abs(totProb-100)>1&&(
               <p style={{textAlign:"center",color:"#FF7070",fontSize:12,marginTop:6}}>
                 ⚠️ Ajusta para sumar exactamente 100%
