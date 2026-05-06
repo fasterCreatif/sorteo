@@ -37,6 +37,63 @@
     ::-webkit-scrollbar-track{background:transparent}
     ::-webkit-scrollbar-thumb{background:#0a3a1a;border-radius:4px}
   </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    // Misma config de Firebase que el sorteo
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBTX1WF2fgDdzBvPDxtEebU7TUfFcuXsuo",
+      authDomain:        "sorteo-arte-corporal.firebaseapp.com",
+      databaseURL:       "https://sorteo-arte-corporal-default-rtdb.firebaseio.com",
+      projectId:         "sorteo-arte-corporal",
+      storageBucket:     "sorteo-arte-corporal.firebasestorage.app",
+      messagingSenderId: "194538097164",
+      appId:             "1:194538097164:web:04badbc2adc8656ddb7c29"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const rdb = firebase.database();
+
+    // ── Contador global de giros únicos en Firebase ──
+    const FB_SPIN_KEY   = "ruleta/spinCount";
+    const FB_HALF_KEY   = "ruleta/halfTrigger";
+    const FB_HIST_KEY   = "ruleta/historial";
+    const FB_PLAYED_KEY = "ruleta/jugadores";
+
+    window.fbGetSpinCount = () => new Promise(r =>
+      rdb.ref(FB_SPIN_KEY).once("value", s => r(s.val() || 0))
+    );
+    window.fbBumpSpinCount = () => new Promise(r =>
+      rdb.ref(FB_SPIN_KEY).transaction(n => (n || 0) + 1, (e, c, s) => r(s ? s.val() : 1))
+    );
+    window.fbResetSpinCount = () => rdb.ref(FB_SPIN_KEY).set(0);
+
+    window.fbGetHalfTrigger = () => new Promise(r =>
+      rdb.ref(FB_HALF_KEY).once("value", s => r(s.val() || 0))
+    );
+    window.fbSetHalfTrigger = (n) => rdb.ref(FB_HALF_KEY).set(n);
+    window.fbInitHalfTrigger = () => {
+      const t = 20 + Math.floor(Math.random() * 30);
+      return rdb.ref(FB_HALF_KEY).set(t).then(() => t);
+    };
+
+    window.fbHasPlayed = (key) => new Promise(r =>
+      rdb.ref(FB_PLAYED_KEY + "/" + key).once("value", s => r(s.exists()))
+    );
+    window.fbMarkPlayed = (key) => rdb.ref(FB_PLAYED_KEY + "/" + key).set(1);
+
+    window.fbPushHist = (entry) => rdb.ref(FB_HIST_KEY).push(entry);
+    window.fbLoadHist = () => new Promise(r =>
+      rdb.ref(FB_HIST_KEY).orderByKey().limitToLast(100).once("value", s => {
+        const val = s.val();
+        if (!val) return r([]);
+        const arr = Object.values(val).reverse();
+        r(arr);
+      })
+    );
+  </script>
+
 </head>
 <body>
 <div id="root"></div>
@@ -58,6 +115,25 @@ const ADMIN_PASS  = "3168109900J";   // ← Cambia tu contraseña aquí
 const HIST_KEY    = "fc_hist_v1";
 const PRIZES_KEY  = "fc_prizes_v1";
 const WEBHOOK_URL = "";             // ← Opcional: URL de Webhook externo adicional
+const SPIN_COUNT_KEY  = "fc_spin_count_v1";   // contador de giros únicos
+const HALF_SPIN_KEY   = "fc_half_spin_v1";    // bandera 50% OFF aleatorio
+const TATTOO_LABEL    = "TATTOO GRATIS";       // etiqueta exacta del premio mayor
+const HALF_LABEL      = "50% OFF";             // etiqueta del 50% OFF
+
+// ── Contador de giros únicos ──────────────────────────────────────────────────
+const getSpinCount  = () => parseInt(lsGet(SPIN_COUNT_KEY) || "0", 10);
+const bumpSpinCount = () => { const n = getSpinCount() + 1; lsSet(SPIN_COUNT_KEY, String(n)); return n; };
+const resetSpinCount= () => lsSet(SPIN_COUNT_KEY, "0");
+
+// ── Flag 50% OFF aleatorio ────────────────────────────────────────────────────
+// Se activa aleatoriamente entre el giro 20 y 49 del ciclo actual
+const getHalfTrigger  = () => parseInt(lsGet(HALF_SPIN_KEY) || "0", 10);
+const setHalfTrigger  = (n) => lsSet(HALF_SPIN_KEY, String(n));
+const initHalfTrigger = () => {
+  const t = 20 + Math.floor(Math.random() * 30); // entre 20 y 49
+  setHalfTrigger(t);
+  return t;
+};
 
 // ─── Netlify Forms submit ─────────────────────────────────────────────────────
 const sendToNetlify = (playerName, prizeLabel, timestamp) => {
@@ -76,15 +152,14 @@ const sendToNetlify = (playerName, prizeLabel, timestamp) => {
 };
 
 const DEFAULT_PRIZES = [
-  { label:"10% OFF",      color:"#0a1a0f", textColor:"#00d166", prob:35  },
+  { label:"10% OFF",      color:"#0a1a0f", textColor:"#00d166", prob:36  },
   { label:"15% OFF",      color:"#0D1B2A", textColor:"#00d166", prob:30  },
-  { label:"-20% IDEA",    color:"#0a1a2a", textColor:"#00d166", prob:14  },
+  { label:"-20% IDEA",    color:"#0a1a2a", textColor:"#00d166", prob:15  },
   { label:"2x1 TATTOOS",  color:"#1a0a2a", textColor:"#00d166", prob:12  },
-  { label:"KIT CUIDADO",  color:"#0A2A1A", textColor:"#00d166", prob:4   },
-  { label:"DISENO FREE",  color:"#1a2a0a", textColor:"#00d166", prob:3   },
-  { label:"50% OFF",      color:"#1a1a00", textColor:"#00d166", prob:1   },
-  { label:"TATTOO PORT.", color:"#1a0a1a", textColor:"#00d166", prob:0.5 },
-  { label:"TATTOO MINI",  color:"#001a2a", textColor:"#00d166", prob:0.5 },
+  { label:"BOCETO GRATIS",color:"#0A2A1A", textColor:"#00d166", prob:4   },
+  { label:"BOCETO GRATIS",  color:"#1a2a0a", textColor:"#00d166", prob:2   },
+  { label:"50% OFF",      color:"#1a1500", textColor:"#00ff88", prob:0.5 },
+  { label:"TATTOO GRATIS",color:"#001a0a", textColor:"#00ff88", prob:0.5 },
 ];
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
@@ -116,12 +191,29 @@ const loadPrizes = () => {
 };
 const savePrizes = (p) => lsSet(PRIZES_KEY, JSON.stringify(p));
 
-// ─── Weighted pick ─────────────────────────────────────────────────────────────
-function wPick(prizes) {
-  const tot = prizes.reduce((s,p) => s + Number(p.prob), 0);
+// ─── Weighted pick con lógica especial ────────────────────────────────────────
+function wPick(prizes, spinCount) {
+  // Giro 100 del ciclo → TATTOO GRATIS forzado
+  if (spinCount % 100 === 0 && spinCount > 0) {
+    const ti = prizes.findIndex(p => p.label === TATTOO_LABEL);
+    if (ti !== -1) return ti;
+  }
+  // Giro del trigger aleatorio → 50% OFF forzado
+  const halfTrigger = getHalfTrigger();
+  if (halfTrigger > 0 && spinCount % 100 === halfTrigger) {
+    const hi = prizes.findIndex(p => p.label === HALF_LABEL);
+    if (hi !== -1) { initHalfTrigger(); return hi; } // reinicia el trigger
+  }
+  // Excluir TATTOO GRATIS y 50% OFF del sorteo normal
+  const filtered = prizes.map((p,i) => ({...p, _i:i}))
+    .filter(p => p.label !== TATTOO_LABEL && p.label !== HALF_LABEL);
+  const tot = filtered.reduce((s,p) => s + Number(p.prob), 0);
   let r = Math.random() * tot;
-  for (let i = 0; i < prizes.length; i++) { r -= Number(prizes[i].prob); if (r <= 0) return i; }
-  return prizes.length - 1;
+  for (let i = 0; i < filtered.length; i++) {
+    r -= Number(filtered[i].prob);
+    if (r <= 0) return filtered[i]._i;
+  }
+  return filtered[filtered.length - 1]._i;
 }
 
 // ─── Draw wheel ────────────────────────────────────────────────────────────────
@@ -237,44 +329,128 @@ function App() {
     if (!nm || nm.length < 2) { setError("Ingresa tu nombre completo"); return; }
     if (!ph || !/^[0-9]{10}$/.test(ph)) { setError("Ingresa tu número de celular (10 dígitos)"); return; }
     setError("");
-    if (hasPlayed(nm + ph)) { setError("¡Ya participaste! Solo un giro por persona 🎯"); return; }
-    setPlayerName(nm); setView("spin");
+    setSpinning(true); // bloquea el botón mientras verifica
+    const playKey = (nm+ph).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,50);
+    window.fbHasPlayed(playKey).then(played => {
+      setSpinning(false);
+      if (played) { setError("¡Ya participaste! Solo un giro por persona 🎯"); return; }
+      setPlayerName(nm); setView("spin");
+    }).catch(() => {
+      // Si falla Firebase, continuar igual
+      setSpinning(false);
+      setPlayerName(nm); setView("spin");
+    });
   };
 
   const handleSpin = () => {
     if (spinning || prizes.length === 0) return;
     setSpinning(true);
-    const n=prizes.length, arc=(2*Math.PI)/n;
-    const idx=wPick(prizes);
-    let tgt=((-Math.PI/2-arc*idx-arc/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
-    const sa=angleRef.current, cm=((sa%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
-    let delta=tgt-cm; if(delta<=0) delta+=2*Math.PI;
-    const end=sa+(7+Math.random()*3)*2*Math.PI+delta;
-    const dur=5800, t0=performance.now();
-    const tick=(now)=>{
-      const t=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-t,4), cur=sa+(end-sa)*ease;
-      angleRef.current=cur; drawWheel(canvasRef.current, cur, prizes);
-      if(t<1){animRef.current=requestAnimationFrame(tick);return;}
-      // Premio leído desde posición visual real de la rueda al parar
-      const finalAngle=((cur%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
-      const pointer=(((-Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
-      const rel=((pointer-finalAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
-      const visualIdx=Math.floor(rel/arc)%n;
-      setSpinning(false);
-      const p=prizes[visualIdx]; setPrize(p);
-      markPlayed(playerName + phoneInput.trim());
-      const ts=new Date().toISOString();
-      const h=pushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
-      setHistory(h);
-      if(WEBHOOK_URL){
-        fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({playerName,prize:p.label,timestamp:ts})
-        }).catch(()=>{});
-      }
-      sendToNetlify(playerName, p.label, ts);
-      setTimeout(()=>{setView("result");boom();},400);
-    };
-    animRef.current=requestAnimationFrame(tick);
+
+    // Obtener spinCount global de Firebase y hacer el giro
+    Promise.all([window.fbBumpSpinCount(), window.fbGetHalfTrigger()])
+      .then(([spinCount, halfTrigger]) => {
+        // Inicializar trigger 50% si es necesario
+        const initHalf = (spinCount === 1 || halfTrigger === 0)
+          ? window.fbInitHalfTrigger()
+          : Promise.resolve(halfTrigger);
+
+        return initHalf.then(ht => {
+          // Usar wPick con datos de Firebase
+          const fbHalfTrigger = ht;
+          // Override temporal del getHalfTrigger para esta llamada
+          const origGet = window._fbHT; window._fbHT = fbHalfTrigger;
+
+          // Lógica wPick inline con valores de Firebase
+          let idx;
+          if (spinCount % 100 === 0 && spinCount > 0) {
+            // Giro 100 -> TATTOO GRATIS forzado
+            idx = prizes.findIndex(p => p.label === TATTOO_LABEL);
+            if (idx === -1) idx = 0;
+            // Reiniciar trigger 50% para nuevo ciclo
+            window.fbInitHalfTrigger();
+          } else if (fbHalfTrigger > 0 && spinCount % 100 === fbHalfTrigger) {
+            // Trigger aleatorio -> 50% OFF forzado
+            idx = prizes.findIndex(p => p.label === HALF_LABEL);
+            if (idx === -1) idx = 0;
+            window.fbInitHalfTrigger(); // reinicia para siguiente ciclo
+          } else {
+            // Sorteo normal - excluir TATTOO GRATIS y 50% OFF
+            const filtered = prizes.map((p,i) => ({...p, _i:i}))
+              .filter(p => p.label !== TATTOO_LABEL && p.label !== HALF_LABEL);
+            const tot = filtered.reduce((s,p) => s + Number(p.prob), 0);
+            let r = Math.random() * tot;
+            idx = filtered[filtered.length-1]._i;
+            for (let i = 0; i < filtered.length; i++) {
+              r -= Number(filtered[i].prob);
+              if (r <= 0) { idx = filtered[i]._i; break; }
+            }
+          }
+
+          const n=prizes.length, arc=(2*Math.PI)/n;
+          let tgt=((-Math.PI/2-arc*idx-arc/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+          const sa=angleRef.current, cm=((sa%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          let delta=tgt-cm; if(delta<=0) delta+=2*Math.PI;
+          const end=sa+(7+Math.random()*3)*2*Math.PI+delta;
+          const dur=5800, t0=performance.now();
+          const tick=(now)=>{
+            const t=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-t,4), cur=sa+(end-sa)*ease;
+            angleRef.current=cur; drawWheel(canvasRef.current, cur, prizes);
+            if(t<1){animRef.current=requestAnimationFrame(tick);return;}
+            const finalAngle=((cur%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+            const pointer=(((-Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+            const rel=((pointer-finalAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+            const visualIdx=Math.floor(rel/arc)%n;
+            setSpinning(false);
+            const p=prizes[visualIdx]; setPrize(p);
+            // Guardar en Firebase
+            const playKey = (playerName+phoneInput.trim()).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,50);
+            window.fbMarkPlayed(playKey);
+            const ts=new Date().toISOString();
+            window.fbPushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+            // También guardar local como backup
+            const h=pushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+            setHistory(h);
+            if(WEBHOOK_URL){
+              fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({playerName,prize:p.label,timestamp:ts})
+              }).catch(()=>{});
+            }
+            sendToNetlify(playerName, p.label, ts);
+            setTimeout(()=>{setView("result");boom();},400);
+          };
+          animRef.current=requestAnimationFrame(tick);
+        });
+      })
+      .catch(() => {
+        // Fallback si Firebase falla: usar localStorage
+        setSpinning(true);
+        const spinCount = bumpSpinCount();
+        if (spinCount === 1 || getHalfTrigger() === 0) initHalfTrigger();
+        const n=prizes.length, arc=(2*Math.PI)/n;
+        const idx=wPick(prizes, spinCount);
+        let tgt=((-Math.PI/2-arc*idx-arc/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+        const sa=angleRef.current, cm=((sa%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+        let delta=tgt-cm; if(delta<=0) delta+=2*Math.PI;
+        const end=sa+(7+Math.random()*3)*2*Math.PI+delta;
+        const dur=5800, t0=performance.now();
+        const tick=(now)=>{
+          const t=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-t,4), cur=sa+(end-sa)*ease;
+          angleRef.current=cur; drawWheel(canvasRef.current, cur, prizes);
+          if(t<1){animRef.current=requestAnimationFrame(tick);return;}
+          const finalAngle=((cur%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          const pointer=(((-Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          const rel=((pointer-finalAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+          const visualIdx=Math.floor(rel/arc)%n;
+          setSpinning(false);
+          const p=prizes[visualIdx]; setPrize(p);
+          markPlayed(playerName+phoneInput.trim());
+          const ts=new Date().toISOString();
+          const h=pushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+          setHistory(h);
+          setTimeout(()=>{setView("result");boom();},400);
+        };
+        animRef.current=requestAnimationFrame(tick);
+      });
   };
 
   const tapAdmin = () => {
@@ -284,7 +460,7 @@ function App() {
   const loginAdmin = () => {
     if(adminPass===ADMIN_PASS){
       setAdminModal(false);setAdminPass("");setAdminErr("");
-      setHistory(loadHist());
+      window.fbLoadHist().then(h => setHistory(h)).catch(() => setHistory(loadHist()));
       setEditPrizes(prizes.map(p=>({...p})));
       setView("admin");
     } else setAdminErr("Contraseña incorrecta");
@@ -534,7 +710,7 @@ function App() {
               fontWeight:adminTab===id?700:400,
             }} onClick={()=>{
               setAdminTab(id);
-              if(id==="history") setHistory(loadHist());
+              if(id==="history") window.fbLoadHist().then(h => setHistory(h)).catch(() => setHistory(loadHist()));
               if(id==="prizes") setEditPrizes(prizes.map(p=>({...p})));
             }}>{lbl}</button>
           ))}
@@ -581,6 +757,15 @@ function App() {
                       );
                     })}
                   </div>
+                {/* Contador de giros únicos */}
+                <div style={{marginTop:14,background:"rgba(0,209,102,0.07)",
+                  border:"1px solid rgba(0,209,102,0.25)",borderRadius:8,
+                  padding:"12px 16px",fontSize:13,color:"#aaa"}}>
+                  🎯 <strong style={{color:"#00d166"}}>Giros únicos en ciclo actual:</strong>&nbsp;
+                  {getSpinCount() % 100} / 100&nbsp;&nbsp;·&nbsp;&nbsp;
+                  Próximo <strong style={{color:"#00ff88"}}>TATTOO GRATIS</strong> en el giro&nbsp;
+                  <strong style={{color:"#00ff88"}}>{100 - (getSpinCount() % 100)}</strong>
+                </div>
                 </div>
               </>
             )}
