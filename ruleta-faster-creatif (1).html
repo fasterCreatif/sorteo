@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#080f0a"/>
+  <title>FASTER CREATIF · Ruleta</title>
+
+  <!-- React + Babel (no build step needed) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body,#root{height:100%;width:100%;}
+    body{background:#080f0a;-webkit-tap-highlight-color:transparent;}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+    @keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(0,209,102,0.35)}50%{box-shadow:0 0 0 14px rgba(0,209,102,0)}}
+    @keyframes pSpin{0%,100%{box-shadow:0 0 0 0 rgba(0,209,102,0.4)}50%{box-shadow:0 0 0 16px rgba(0,209,102,0)}}
+    @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(4px)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes shimmer{0%,100%{opacity:1;text-shadow:0 0 30px rgba(0,209,102,0.9),0 0 60px rgba(0,168,77,0.5)}50%{opacity:0.85;text-shadow:0 0 50px rgba(0,209,102,1),0 0 90px rgba(0,168,77,0.8)}}
+    @keyframes lineGlow{0%,100%{opacity:0.4}50%{opacity:1}}
+    @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+    @keyframes popIn{0%{transform:scale(0) rotate(-18deg);opacity:0}70%{transform:scale(1.08) rotate(2deg)}100%{transform:scale(1);opacity:1}}
+    @keyframes glow{0%,100%{text-shadow:0 0 20px rgba(0,209,102,0.5)}50%{text-shadow:0 0 40px rgba(0,209,102,0.9)}}
+    input:focus{border-color:#00d166!important;box-shadow:0 0 0 2px rgba(0,209,102,0.18)!important;outline:none;}
+    button:active{opacity:0.85!important;}
+    table{border-collapse:collapse;width:100%}
+    th{background:rgba(0,209,102,0.1);color:#00d166;font-size:10px;letter-spacing:1.5px;padding:9px 10px;text-align:left;border-bottom:1px solid #0a2a1a}
+    td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:#B8A880}
+    tr:hover td{background:rgba(255,215,0,0.03)}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#0a3a1a;border-radius:4px}
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    // Misma config de Firebase que el sorteo
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBTX1WF2fgDdzBvPDxtEebU7TUfFcuXsuo",
+      authDomain:        "sorteo-arte-corporal.firebaseapp.com",
+      databaseURL:       "https://sorteo-arte-corporal-default-rtdb.firebaseio.com",
+      projectId:         "sorteo-arte-corporal",
+      storageBucket:     "sorteo-arte-corporal.firebasestorage.app",
+      messagingSenderId: "194538097164",
+      appId:             "1:194538097164:web:04badbc2adc8656ddb7c29"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const rdb = firebase.database();
+
+    // ── Contador global de giros únicos en Firebase ──
+    const FB_SPIN_KEY   = "ruleta/spinCount";
+    const FB_HALF_KEY   = "ruleta/halfTrigger";
+    const FB_HIST_KEY   = "ruleta/historial";
+    const FB_PLAYED_KEY = "ruleta/jugadores";
+
+    window.fbGetSpinCount = () => new Promise(r =>
+      rdb.ref(FB_SPIN_KEY).once("value", s => r(s.val() || 0))
+    );
+    window.fbBumpSpinCount = () => new Promise(r =>
+      rdb.ref(FB_SPIN_KEY).transaction(n => (n || 0) + 1, (e, c, s) => r(s ? s.val() : 1))
+    );
+    window.fbResetSpinCount = () => rdb.ref(FB_SPIN_KEY).set(0);
+
+    window.fbGetHalfTrigger = () => new Promise(r =>
+      rdb.ref(FB_HALF_KEY).once("value", s => r(s.val() || 0))
+    );
+    window.fbSetHalfTrigger = (n) => rdb.ref(FB_HALF_KEY).set(n);
+    window.fbInitHalfTrigger = () => {
+      const t = 30; // 50% OFF cae exactamente en el giro 30 de cada ciclo
+      return rdb.ref(FB_HALF_KEY).set(t).then(() => t);
+    };
+
+    window.fbHasPlayed = (key) => new Promise(r =>
+      rdb.ref(FB_PLAYED_KEY + "/" + key).once("value", s => r(s.exists()))
+    );
+    window.fbMarkPlayed = (key) => rdb.ref(FB_PLAYED_KEY + "/" + key).set(1);
+
+    window.fbPushHist = (entry) => rdb.ref(FB_HIST_KEY).push(entry);
+    window.fbLoadHist = () => new Promise(r =>
+      rdb.ref(FB_HIST_KEY).orderByKey().limitToLast(100).once("value", s => {
+        const val = s.val();
+        if (!val) return r([]);
+        const arr = Object.values(val).reverse();
+        r(arr);
+      })
+    );
+  </script>
+
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Formulario oculto: Netlify lo detecta al desplegar y habilita la captura -->
+<form name="ganadores" data-netlify="true" data-netlify-honeypot="bot-field" hidden>
+  <input type="hidden" name="form-name"   value="ganadores"/>
+  <input type="hidden" name="bot-field"/>
+  <input type="text"   name="nombre"/>
+  <input type="text"   name="premio"/>
+  <input type="text"   name="fecha"/>
+</form>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── Configuración ────────────────────────────────────────────────────────────
+const ADMIN_PASS  = "3168109900J";   // ← Cambia tu contraseña aquí
+const HIST_KEY    = "fc_hist_v1";
+const PRIZES_KEY  = "fc_prizes_v1";
+const WEBHOOK_URL = "";             // ← Opcional: URL de Webhook externo adicional
+const SPIN_COUNT_KEY  = "fc_spin_count_v1";   // contador de giros únicos
+const HALF_SPIN_KEY   = "fc_half_spin_v1";    // bandera 50% OFF aleatorio
+const TATTOO_LABEL    = "TATTOO GRATIS";       // etiqueta exacta del premio mayor
+const HALF_LABEL      = "50% OFF";             // etiqueta del 50% OFF
+
+// ── Contador de giros únicos ──────────────────────────────────────────────────
+const getSpinCount  = () => parseInt(lsGet(SPIN_COUNT_KEY) || "0", 10);
+const bumpSpinCount = () => { const n = getSpinCount() + 1; lsSet(SPIN_COUNT_KEY, String(n)); return n; };
+const resetSpinCount= () => lsSet(SPIN_COUNT_KEY, "0");
+
+// ── Flag 50% OFF aleatorio ────────────────────────────────────────────────────
+// Se activa aleatoriamente entre el giro 20 y 49 del ciclo actual
+const getHalfTrigger  = () => parseInt(lsGet(HALF_SPIN_KEY) || "0", 10);
+const setHalfTrigger  = (n) => lsSet(HALF_SPIN_KEY, String(n));
+const initHalfTrigger = () => {
+  const t = 30; // 50% OFF cae exactamente en el giro 30 de cada ciclo
+  setHalfTrigger(t);
+  return t;
+};
+
+// ─── Netlify Forms submit ─────────────────────────────────────────────────────
+const sendToNetlify = (playerName, prizeLabel, timestamp) => {
+  const body = new URLSearchParams({
+    "form-name": "ganadores",
+    "bot-field": "",
+    nombre: playerName,
+    premio:  prizeLabel,
+    fecha:   new Date(timestamp).toLocaleString("es-CO"),
+  }).toString();
+  fetch("/", {
+    method:  "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  }).catch(() => {});
+};
+
+const DEFAULT_PRIZES = [
+  { label:"10% OFF",      color:"#0a1a0f", textColor:"#00d166", prob:36  },
+  { label:"15% OFF",      color:"#0D1B2A", textColor:"#00d166", prob:30  },
+  { label:"-20% IDEA",    color:"#0a1a2a", textColor:"#00d166", prob:15  },
+  { label:"2x1 TATTOOS",  color:"#1a0a2a", textColor:"#00d166", prob:12  },
+  { label:"BOCETO GRATIS",color:"#0A2A1A", textColor:"#00d166", prob:4   },
+  { label:"BOCETO GRATIS",  color:"#1a2a0a", textColor:"#00d166", prob:2   },
+  { label:"50% OFF",      color:"#1a1500", textColor:"#00ff88", prob:0.5 },
+  { label:"TATTOO GRATIS",color:"#001a0a", textColor:"#00ff88", prob:0.5 },
+];
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+const safeJson = (str, fallback) => { try { return JSON.parse(str); } catch { return fallback; } };
+
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+const playedKey = (n) =>
+  "fc_played_" + n.toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"").slice(0,40);
+
+const hasPlayed  = (n) => !!lsGet(playedKey(n));
+const markPlayed = (n) => lsSet(playedKey(n), "1");
+
+const loadHist = () => {
+  const r = safeJson(lsGet(HIST_KEY), []);
+  return Array.isArray(r) ? r : [];
+};
+const pushHist = (e) => {
+  const h = loadHist(); h.unshift(e);
+  lsSet(HIST_KEY, JSON.stringify(h)); return h;
+};
+
+const loadPrizes = () => {
+  const r = safeJson(lsGet(PRIZES_KEY), null);
+  if (Array.isArray(r) && r.length >= 2 && r.every(p => p.label && Number(p.prob) > 0 && p.color))
+    return r;
+  return DEFAULT_PRIZES;
+};
+const savePrizes = (p) => lsSet(PRIZES_KEY, JSON.stringify(p));
+
+// ─── Weighted pick con lógica especial ────────────────────────────────────────
+function wPick(prizes, spinCount) {
+  // Giro 100 del ciclo → TATTOO GRATIS forzado
+  if (spinCount % 100 === 0 && spinCount > 0) {
+    const ti = prizes.findIndex(p => p.label === TATTOO_LABEL);
+    if (ti !== -1) return ti;
+  }
+  // Giro del trigger aleatorio → 50% OFF forzado
+  const halfTrigger = getHalfTrigger();
+  if (halfTrigger > 0 && spinCount % 100 === halfTrigger) {
+    const hi = prizes.findIndex(p => p.label === HALF_LABEL);
+    if (hi !== -1) { initHalfTrigger(); return hi; } // reinicia el trigger
+  }
+  // Excluir TATTOO GRATIS y 50% OFF del sorteo normal
+  const filtered = prizes.map((p,i) => ({...p, _i:i}))
+    .filter(p => p.label !== TATTOO_LABEL && p.label !== HALF_LABEL);
+  const tot = filtered.reduce((s,p) => s + Number(p.prob), 0);
+  let r = Math.random() * tot;
+  for (let i = 0; i < filtered.length; i++) {
+    r -= Number(filtered[i].prob);
+    if (r <= 0) return filtered[i]._i;
+  }
+  return filtered[filtered.length - 1]._i;
+}
+
+// ─── Draw wheel ────────────────────────────────────────────────────────────────
+function drawWheel(canvas, angle, prizes) {
+  if (!canvas || !prizes || prizes.length === 0) return false;
+  try {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return false;
+    const W=canvas.width, cx=W/2, cy=W/2, r=cx-16, n=prizes.length, arc=(2*Math.PI)/n;
+    ctx.clearRect(0,0,W,W);
+    const g = ctx.createRadialGradient(cx,cy,r-4,cx,cy,r+20);
+    g.addColorStop(0,"rgba(255,215,0,0.5)"); g.addColorStop(1,"rgba(0,209,102,0)");
+    ctx.beginPath(); ctx.arc(cx,cy,r+14,0,2*Math.PI); ctx.fillStyle=g; ctx.fill();
+    for (let i=0; i<n; i++) {
+      const sa=angle+arc*i, ea=sa+arc;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,sa,ea); ctx.closePath();
+      ctx.fillStyle=prizes[i].color; ctx.fill();
+      ctx.strokeStyle="#00d166"; ctx.lineWidth=2; ctx.stroke();
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(sa+arc/2);
+      ctx.textAlign="right"; ctx.fillStyle=prizes[i].textColor||"#FFD700";
+      const l=prizes[i].label.length;
+      ctx.font=`bold ${l>11?8:l>8?9.5:11}px Georgia,serif`;
+      ctx.shadowColor="rgba(0,0,0,0.95)"; ctx.shadowBlur=5;
+      ctx.fillText(prizes[i].label, r-10, 4); ctx.restore();
+    }
+    for (let i=0; i<n; i++) {
+      const a=angle+arc*i;
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+      ctx.beginPath(); ctx.arc(r,0,4,0,2*Math.PI); ctx.fillStyle="#00d166"; ctx.fill(); ctx.restore();
+    }
+    const h=ctx.createRadialGradient(cx-3,cy-3,2,cx,cy,20);
+    h.addColorStop(0,"#ccffe8"); h.addColorStop(1,"#00a84d");
+    ctx.beginPath(); ctx.arc(cx,cy,20,0,2*Math.PI); ctx.fillStyle=h; ctx.fill();
+    ctx.strokeStyle="#007a3d"; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle="#8B0000"; ctx.font="bold 14px serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("★",cx,cy);
+    return true;
+  } catch { return false; }
+}
+
+// ─── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [view,       setView]       = useState("register");
+  const [prizes,     setPrizes]     = useState(() => loadPrizes());
+  const [nameInput,  setNameInput]  = useState("");
+  const [playerName, setPlayerName] = useState("");
+  const [error,      setError]      = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [spinning,   setSpinning]   = useState(false);
+  const [prize,      setPrize]      = useState(null);
+  const [history,    setHistory]    = useState([]);
+  const [adminTaps,  setAdminTaps]  = useState(0);
+  const [adminModal, setAdminModal] = useState(false);
+  const [adminPass,  setAdminPass]  = useState("");
+  const [adminErr,   setAdminErr]   = useState("");
+  const [confetti,   setConfetti]   = useState([]);
+  const [wSize,      setWSize]      = useState(280);
+  const [canvasOk,   setCanvasOk]   = useState(false);
+  const [adminTab,   setAdminTab]   = useState("history");
+  const [editPrizes, setEditPrizes] = useState([]);
+  const [newLabel,   setNewLabel]   = useState("");
+  const [newProb,    setNewProb]    = useState("");
+  const [newColor,   setNewColor]   = useState("#0D1B2A");
+  const [saveMsg,    setSaveMsg]    = useState("");
+
+  const canvasRef = useRef(null);
+  const angleRef  = useRef(0);
+  const animRef   = useRef(null);
+  const timers    = useRef([]);
+
+  useEffect(() => {
+    const calc = () => setWSize(Math.min(window.innerWidth - 64, 300));
+    calc(); window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
+
+  useEffect(() => {
+    if (view !== "spin") return;
+    setCanvasOk(false);
+    timers.current.forEach(clearTimeout); timers.current = [];
+    [0, 80, 200, 500, 1000].forEach(d => {
+      const t = setTimeout(() => {
+        const ok = drawWheel(canvasRef.current, angleRef.current, prizes);
+        if (ok) setCanvasOk(true);
+      }, d);
+      timers.current.push(t);
+    });
+    return () => timers.current.forEach(clearTimeout);
+  }, [view, wSize, prizes]);
+
+  const canvasCb = useCallback((node) => {
+    canvasRef.current = node;
+    if (node && prizes.length > 0) {
+      requestAnimationFrame(() => {
+        const ok = drawWheel(node, angleRef.current, prizes);
+        if (ok) setCanvasOk(true);
+      });
+    }
+  }, [prizes]);
+
+  const boom = () => {
+    setConfetti(Array.from({length:50},(_,i) => ({
+      id:i, x:Math.random()*100, y:-10-Math.random()*40, s:4+Math.random()*7,
+      c:["#FFD700","#FF6B6B","#4ECDC4","#C7B3F8","#FF9A9E","#fff"][Math.floor(Math.random()*6)],
+      d:2200+Math.random()*2200,
+    })));
+    setTimeout(() => setConfetti([]), 5500);
+  };
+
+  const handleRegister = () => {
+    const nm = nameInput.trim();
+    const ph = phoneInput.trim();
+    if (!nm || nm.length < 2) { setError("Ingresa tu nombre completo"); return; }
+    if (!ph || !/^[0-9]{10}$/.test(ph)) { setError("Ingresa tu número de celular (10 dígitos)"); return; }
+    setError("");
+    setSpinning(true); // bloquea el botón mientras verifica
+    const playKey = (nm+ph).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,50);
+    window.fbHasPlayed(playKey).then(played => {
+      setSpinning(false);
+      if (played) { setError("¡Ya participaste! Solo un giro por persona 🎯"); return; }
+      setPlayerName(nm); setView("spin");
+    }).catch(() => {
+      // Si falla Firebase, continuar igual
+      setSpinning(false);
+      setPlayerName(nm); setView("spin");
+    });
+  };
+
+  const handleSpin = () => {
+    if (spinning || prizes.length === 0) return;
+    setSpinning(true);
+
+    // Obtener spinCount global de Firebase y hacer el giro
+    Promise.all([window.fbBumpSpinCount(), window.fbGetHalfTrigger()])
+      .then(([spinCount, halfTrigger]) => {
+        // Inicializar trigger 50% si es necesario
+        const initHalf = (spinCount === 1 || halfTrigger === 0)
+          ? window.fbInitHalfTrigger()
+          : Promise.resolve(halfTrigger);
+
+        return initHalf.then(ht => {
+          // Usar wPick con datos de Firebase
+          const fbHalfTrigger = ht;
+          // Override temporal del getHalfTrigger para esta llamada
+          const origGet = window._fbHT; window._fbHT = fbHalfTrigger;
+
+          // Lógica wPick inline con valores de Firebase
+          let idx;
+          if (spinCount % 100 === 0 && spinCount > 0) {
+            // Giro 100 -> TATTOO GRATIS forzado
+            idx = prizes.findIndex(p => p.label === TATTOO_LABEL);
+            if (idx === -1) idx = 0;
+            // Reiniciar trigger 50% para nuevo ciclo
+            window.fbInitHalfTrigger();
+          } else if (fbHalfTrigger > 0 && spinCount % 100 === fbHalfTrigger) {
+            // Trigger aleatorio -> 50% OFF forzado
+            idx = prizes.findIndex(p => p.label === HALF_LABEL);
+            if (idx === -1) idx = 0;
+            window.fbInitHalfTrigger(); // reinicia para siguiente ciclo
+          } else {
+            // Sorteo normal - excluir TATTOO GRATIS y 50% OFF
+            const filtered = prizes.map((p,i) => ({...p, _i:i}))
+              .filter(p => p.label !== TATTOO_LABEL && p.label !== HALF_LABEL);
+            const tot = filtered.reduce((s,p) => s + Number(p.prob), 0);
+            let r = Math.random() * tot;
+            idx = filtered[filtered.length-1]._i;
+            for (let i = 0; i < filtered.length; i++) {
+              r -= Number(filtered[i].prob);
+              if (r <= 0) { idx = filtered[i]._i; break; }
+            }
+          }
+
+          const n=prizes.length, arc=(2*Math.PI)/n;
+          let tgt=((-Math.PI/2-arc*idx-arc/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+          const sa=angleRef.current, cm=((sa%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          let delta=tgt-cm; if(delta<=0) delta+=2*Math.PI;
+          const end=sa+(7+Math.random()*3)*2*Math.PI+delta;
+          const dur=5800, t0=performance.now();
+          const tick=(now)=>{
+            const t=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-t,4), cur=sa+(end-sa)*ease;
+            angleRef.current=cur; drawWheel(canvasRef.current, cur, prizes);
+            if(t<1){animRef.current=requestAnimationFrame(tick);return;}
+            const finalAngle=((cur%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+            const pointer=(((-Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+            const rel=((pointer-finalAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+            const visualIdx=Math.floor(rel/arc)%n;
+            setSpinning(false);
+            const p=prizes[visualIdx]; setPrize(p);
+            // Guardar en Firebase
+            const playKey = (playerName+phoneInput.trim()).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,50);
+            window.fbMarkPlayed(playKey);
+            const ts=new Date().toISOString();
+            window.fbPushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+            // También guardar local como backup
+            const h=pushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+            setHistory(h);
+            if(WEBHOOK_URL){
+              fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({playerName,prize:p.label,timestamp:ts})
+              }).catch(()=>{});
+            }
+            sendToNetlify(playerName, p.label, ts);
+            setTimeout(()=>{setView("result");boom();},400);
+          };
+          animRef.current=requestAnimationFrame(tick);
+        });
+      })
+      .catch(() => {
+        // Fallback si Firebase falla: usar localStorage
+        setSpinning(true);
+        const spinCount = bumpSpinCount();
+        if (spinCount === 1 || getHalfTrigger() === 0) initHalfTrigger();
+        const n=prizes.length, arc=(2*Math.PI)/n;
+        const idx=wPick(prizes, spinCount);
+        let tgt=((-Math.PI/2-arc*idx-arc/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+        const sa=angleRef.current, cm=((sa%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+        let delta=tgt-cm; if(delta<=0) delta+=2*Math.PI;
+        const end=sa+(7+Math.random()*3)*2*Math.PI+delta;
+        const dur=5800, t0=performance.now();
+        const tick=(now)=>{
+          const t=Math.min((now-t0)/dur,1), ease=1-Math.pow(1-t,4), cur=sa+(end-sa)*ease;
+          angleRef.current=cur; drawWheel(canvasRef.current, cur, prizes);
+          if(t<1){animRef.current=requestAnimationFrame(tick);return;}
+          const finalAngle=((cur%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          const pointer=(((-Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+          const rel=((pointer-finalAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+          const visualIdx=Math.floor(rel/arc)%n;
+          setSpinning(false);
+          const p=prizes[visualIdx]; setPrize(p);
+          markPlayed(playerName+phoneInput.trim());
+          const ts=new Date().toISOString();
+          const h=pushHist({name:playerName,phone:phoneInput.trim(),prize:p.label,ts});
+          setHistory(h);
+          setTimeout(()=>{setView("result");boom();},400);
+        };
+        animRef.current=requestAnimationFrame(tick);
+      });
+  };
+
+  const tapAdmin = () => {
+    const c=adminTaps+1; setAdminTaps(c);
+    if(c>=5){setAdminTaps(0);setAdminModal(true);}
+  };
+  const deletePlayer = (entry) => {
+    if (!window.confirm("¿Dar segunda oportunidad a " + entry.name + "? Se eliminará su registro y podrá girar de nuevo.")) return;
+    // Eliminar de Firebase jugadores
+    const playKey = (entry.name+(entry.phone||"")).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,50);
+    window.fbMarkPlayed && rdb.ref("ruleta/jugadores/" + playKey).remove();
+    // Eliminar del historial Firebase
+    window.fbLoadHist && rdb.ref("ruleta/historial").orderByChild("ts").equalTo(entry.ts).once("value", snap => {
+      snap.forEach(child => child.ref.remove());
+    });
+    // Actualizar historial local
+    const newH = history.filter(h => h.ts !== entry.ts);
+    setHistory(newH);
+    lsSet(HIST_KEY, JSON.stringify(newH));
+    alert("✅ " + entry.name + " puede volver a girar la ruleta.");
+  };
+
+  const loginAdmin = () => {
+    if(adminPass===ADMIN_PASS){
+      setAdminModal(false);setAdminPass("");setAdminErr("");
+      window.fbLoadHist().then(h => setHistory(h)).catch(() => setHistory(loadHist()));
+      setEditPrizes(prizes.map(p=>({...p})));
+      setView("admin");
+    } else setAdminErr("Contraseña incorrecta");
+  };
+
+  const updEP=(i,f,v)=>setEditPrizes(prev=>{const n=[...prev];n[i]={...n[i],[f]:v};return n;});
+  const remEP=(i)=>setEditPrizes(prev=>prev.filter((_,j)=>j!==i));
+  const addPrize=()=>{
+    if(!newLabel.trim()||!newProb)return;
+    setEditPrizes(prev=>[...prev,{label:newLabel.trim(),prob:Number(newProb),color:newColor,textColor:"#FFD700"}]);
+    setNewLabel("");setNewProb("");setNewColor("#0D1B2A");
+  };
+  const savePrizesAdmin=()=>{
+    if(editPrizes.length<2)return;
+    savePrizes(editPrizes); setPrizes([...editPrizes]);
+    setSaveMsg("✅ Guardado"); setTimeout(()=>setSaveMsg(""),2500);
+  };
+
+  const totProb=editPrizes.reduce((s,p)=>s+Number(p.prob),0);
+  const fmt=(iso)=>{
+    const d=new Date(iso);
+    return d.toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",year:"2-digit"})
+      +" "+d.toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+  };
+
+  const S = {
+    root:{minHeight:"100vh",background:"#080810",display:"flex",flexDirection:"column",
+      alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif",
+      color:"#e0f0e8",padding:"16px",
+      backgroundImage:"radial-gradient(ellipse at 25% 15%,rgba(0,100,50,0.15) 0%,transparent 55%),radial-gradient(ellipse at 75% 85%,rgba(0,80,40,0.15) 0%,transparent 55%)",
+    },
+    card:{width:"100%",maxWidth:400,background:"rgba(8,14,10,0.97)",borderRadius:18,
+      border:"1px solid #00d166",
+      boxShadow:"0 0 50px rgba(0,209,102,0.12),inset 0 0 80px rgba(0,0,0,0.5)",overflow:"hidden"},
+    hdr:{background:"linear-gradient(160deg,#0a1a0a 0%,#080810 100%)",
+      borderBottom:"2px solid #00d166",padding:"20px 24px 16px",textAlign:"center"},
+    title:{fontSize:21,fontWeight:700,color:"#00d166",letterSpacing:3,fontFamily:"'Bebas Neue',sans-serif",
+      textShadow:"0 0 24px rgba(0,209,102,0.45)",margin:0},
+    sub:{fontSize:11,color:"#4a7a5a",letterSpacing:3,marginTop:4,textTransform:"uppercase"},
+    body:{padding:"22px 20px"},
+    lbl:{display:"block",fontSize:10,letterSpacing:2,color:"#4a7a5a",marginBottom:7,textTransform:"uppercase"},
+    inp:{width:"100%",boxSizing:"border-box",background:"rgba(0,209,102,0.04)",
+      border:"1px solid #1a3a2a",borderRadius:9,padding:"13px 14px",color:"#e0f0e8",
+      fontSize:16,fontFamily:"'DM Sans',sans-serif",outline:"none"},
+    inpSm:{boxSizing:"border-box",background:"rgba(0,209,102,0.04)",
+      border:"1px solid #1a3a2a",borderRadius:7,padding:"8px 10px",color:"#e0f0e8",
+      fontSize:13,fontFamily:"'DM Sans',sans-serif",outline:"none"},
+    gold:{width:"100%",padding:"14px",marginTop:14,
+      background:"linear-gradient(135deg,#00a84d 0%,#00d166 50%,#00a84d 100%)",
+      border:"none",borderRadius:10,color:"#000",fontSize:15,fontWeight:700,
+      letterSpacing:2,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+      boxShadow:"0 4px 22px rgba(0,209,102,0.28)"},
+    outline:{padding:"8px 18px",background:"transparent",border:"1px solid #00d166",
+      borderRadius:8,color:"#00d166",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"},
+    err:{background:"rgba(139,0,0,0.18)",border:"1px solid rgba(139,0,0,0.5)",
+      borderRadius:9,padding:"10px 14px",marginTop:10,fontSize:13,color:"#FF7070"},
+    tab:{padding:"8px 16px",background:"transparent",border:"none",
+      borderRadius:"8px 8px 0 0",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",letterSpacing:1},
+  };
+
+  // ── REGISTER ──────────────────────────────────────────────────────────────────
+  if (view==="register") return (
+    <div style={S.root}>
+      <div style={S.card}>
+        <div style={S.hdr}>
+          <div style={{fontSize:40,animation:"float 3s ease-in-out infinite"}}>🎡</div>
+          <h1 style={S.title}>FASTER CREATIF</h1>
+          <p style={S.sub}>Gira y gana un premio especial 🎡</p>
+        </div>
+        <div style={S.body}>
+          <p style={{textAlign:"center",color:"#4a7a5a",fontSize:13,margin:"0 0 22px",lineHeight:1.7}}>
+            Ingresa tu nombre y número de celular,<br/>gira la ruleta y descubre lo que ganaste ✨
+          </p>
+          <label style={S.lbl}>Tu Nombre</label>
+          <input style={S.inp} placeholder="Escribe tu nombre completo"
+            value={nameInput} onChange={e=>setNameInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleRegister()} maxLength={40} autoComplete="off"/>
+          <label style={{...S.lbl, marginTop:14}}>Tu Número de Celular</label>
+          <input style={S.inp} placeholder="Ej: 3100000000" type="tel"
+            value={phoneInput} onChange={e=>setPhoneInput(e.target.value.replace(/[^0-9]/g,""))}
+            onKeyDown={e=>e.key==="Enter"&&handleRegister()} maxLength={10} autoComplete="off"/>
+
+          {error&&<div style={S.err}>⚠️ {error}</div>}
+          <button style={{...S.gold,animation:"pulse2 2.2s ease-in-out infinite"}}
+            onClick={handleRegister}>¡GIRAR RULETA!</button>
+          <div style={{textAlign:"center",marginTop:22}}>
+            <span style={{fontSize:9,color:"rgba(138,112,80,0.15)",cursor:"default",letterSpacing:1,userSelect:"none"}}
+              onClick={tapAdmin}>● ● ●</span>
+          </div>
+        </div>
+      </div>
+
+      {adminModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",display:"flex",
+          alignItems:"center",justifyContent:"center",zIndex:999,padding:20}}>
+          <div style={{...S.card,maxWidth:300}}>
+            <div style={{...S.hdr,padding:"16px 20px"}}>
+              <p style={{...S.title,fontSize:16,margin:0}}>🔐 Admin</p>
+            </div>
+            <div style={{...S.body,paddingTop:18}}>
+              <label style={S.lbl}>Contraseña</label>
+              <input style={S.inp} type="password" placeholder="••••••••"
+                value={adminPass} onChange={e=>setAdminPass(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&loginAdmin()} autoComplete="current-password"/>
+              {adminErr&&<div style={S.err}>{adminErr}</div>}
+              <div style={{display:"flex",gap:10,marginTop:14}}>
+                <button style={{...S.outline,flex:1}}
+                  onClick={()=>{setAdminModal(false);setAdminPass("");setAdminErr("");}}>Cancelar</button>
+                <button style={{...S.gold,flex:1,marginTop:0}} onClick={loginAdmin}>Entrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── SPIN ───────────────────────────────────────────────────────────────────────
+  if (view==="spin") return (
+    <div style={S.root}>
+      {/* FASTER CREATIF title */}
+      <div style={{textAlign:"center",marginBottom:14,userSelect:"none"}}>
+        <div style={{
+          fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,fontFamily:"'DM Sans',sans-serif",
+          letterSpacing:"0.18em",color:"#00d166",animation:"shimmer 3s ease-in-out infinite",
+          textShadow:"0 0 30px rgba(0,209,102,0.9),0 0 60px rgba(0,168,77,0.5),0 2px 0 rgba(0,0,0,0.6)",
+          lineHeight:1,
+        }}>FASTER CREATIF</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:7}}>
+          <div style={{height:1,width:40,background:"linear-gradient(to right,transparent,#00d166)",animation:"lineGlow 3s ease-in-out infinite"}}/>
+          <span style={{color:"#00d166",fontSize:14,animation:"lineGlow 3s ease-in-out infinite"}}>✦</span>
+          <div style={{height:1,width:40,background:"linear-gradient(to left,transparent,#00d166)",animation:"lineGlow 3s ease-in-out infinite"}}/>
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <div style={S.hdr}>
+          <h1 style={{...S.title,fontSize:18}}>🎡 Ruleta FASTER CREATIF</h1>
+          <p style={{...S.sub,marginTop:4}}>Hola, <span style={{color:"#00d166"}}>{playerName}</span>!</p>
+        </div>
+        <div style={{...S.body,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:16}}>
+          <div style={{width:"100%",background:"rgba(0,209,102,0.05)",
+            border:"1px solid rgba(0,209,102,0.25)",borderRadius:12,
+            padding:"14px 16px",marginBottom:16,animation:"fadeUp 0.5s ease forwards"}}>
+            <p style={{margin:"0 0 8px",fontSize:13,color:"#00d166",fontWeight:700}}>¿Cómo funciona?</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>1️⃣ Dale click al botón y gira.</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>2️⃣ Toma captura de pantalla apenas ganes y envíala <strong style={{color:"#00d166"}}>(obligatorio)</strong>.</p>
+            <p style={{margin:"4px 0",fontSize:13,color:"#7ab88a",lineHeight:1.6}}>3️⃣ Tienes <strong style={{color:"#00d166"}}>15 días</strong> para redimirlo.</p>
+            <p style={{margin:"10px 0 0",fontSize:15,textAlign:"center"}}>¡Mucha suerte! 🍀</p>
+          </div>
+
+          <div style={{position:"relative",width:wSize+4,height:wSize+22}}>
+            <div style={{
+              position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
+              width:0,height:0,
+              borderLeft:"13px solid transparent",borderRight:"13px solid transparent",
+              borderTop:"30px solid #FF2020",
+              filter:"drop-shadow(0 0 8px rgba(255,32,32,0.9))",zIndex:10,
+              animation:spinning?"bob 0.25s ease-in-out infinite":"none",
+            }}/>
+            <canvas ref={canvasCb} width={wSize} height={wSize}
+              style={{display:"block",marginTop:8,borderRadius:"50%",
+                boxShadow:"0 0 30px rgba(0,209,102,0.2)",background:"rgba(8,20,12,0.9)"}}/>
+            {!canvasOk&&(
+              <div style={{position:"absolute",top:8,left:2,width:wSize,height:wSize,
+                borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                flexDirection:"column",background:"rgba(8,14,10,0.92)",
+                border:"2px dashed #3A2A10",pointerEvents:"none"}}>
+                <div style={{fontSize:28,marginBottom:6}}>🎡</div>
+                <p style={{fontSize:11,color:"#4a7a5a",margin:0}}>Cargando...</p>
+              </div>
+            )}
+          </div>
+
+          <button style={{
+            ...S.gold,marginTop:16,
+            opacity:spinning?0.5:1,cursor:spinning?"not-allowed":"pointer",
+            animation:!spinning?"pSpin 2s ease-in-out infinite":"none",
+          }} onClick={handleSpin} disabled={spinning}>
+            {spinning?"⏳  GIRANDO...":"⚡  ¡GIRAR AHORA!"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── RESULT ─────────────────────────────────────────────────────────────────────
+  if (view==="result") return (
+    <div style={{...S.root,position:"relative",overflow:"hidden"}}>
+      {confetti.map(c=>(
+        <div key={c.id} style={{position:"fixed",left:`${c.x}%`,top:`${c.y}%`,
+          width:c.s,height:c.s,background:c.c,borderRadius:c.s<6?"50%":"2px",
+          animation:`fall ${c.d}ms ease-in forwards`,zIndex:999}}/>
+      ))}
+      <div style={S.card}>
+        <div style={S.hdr}><h1 style={{...S.title,fontSize:18}}>🎡 FASTER CREATIF</h1></div>
+        <div style={{...S.body,textAlign:"center"}}>
+          <div style={{fontSize:60,animation:"float 3s ease-in-out infinite",marginBottom:8}}>🎊</div>
+          <h2 style={{color:"#00d166",fontSize:20,margin:"0 0 6px",animation:"glow 2s ease-in-out infinite"}}>
+            ¡Felicitaciones, {playerName}!
+          </h2>
+          <p style={{color:"#4a7a5a",fontSize:13,marginBottom:18}}>Tu premio es:</p>
+          <div style={{background:"linear-gradient(135deg,#1A0A00,#080818)",
+            border:"2px solid #00d166",borderRadius:16,padding:"22px 20px",
+            animation:"popIn 0.65s cubic-bezier(0.175,0.885,0.32,1.275) forwards",
+            boxShadow:"0 0 40px rgba(0,209,102,0.22)",marginBottom:18}}>
+            <div style={{fontSize:44,marginBottom:10}}>🏆</div>
+            <p style={{color:"#00d166",fontSize:28,fontWeight:700,margin:0,letterSpacing:1}}>
+              {prize?.label}
+            </p>
+          </div>
+          <div style={{background:"rgba(139,0,0,0.12)",border:"1px solid rgba(139,0,0,0.35)",
+            borderRadius:11,padding:"13px 16px",marginBottom:18}}>
+            <p style={{fontSize:13,color:"#7ab88a",margin:0,lineHeight:1.8}}>
+              📸 Toma captura de esta pantalla y envíala<br/>
+              para reclamar tu premio.<br/>
+              <strong style={{color:"#00d166"}}>¡Válido por 15 días!</strong>
+            </p>
+          </div>
+          <button style={S.gold}
+            onClick={()=>{setNameInput("");setPlayerName("");setPrize(null);setView("register");}}>
+            ← VOLVER AL INICIO
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── ADMIN ──────────────────────────────────────────────────────────────────────
+  if (view==="admin") return (
+    <div style={{...S.root,justifyContent:"flex-start",paddingTop:20}}>
+      <div style={{...S.card,maxWidth:520}}>
+        <div style={{...S.hdr,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"15px 20px"}}>
+          <div>
+            <h1 style={{...S.title,fontSize:16,margin:0,color:"#00d166"}}>🔐 Panel Admin</h1>
+            <p style={{...S.sub,marginTop:3}}>{history.length} participante{history.length!==1?"s":""}</p>
+          </div>
+          <button style={S.outline} onClick={()=>setView("register")}>Salir</button>
+        </div>
+
+        <div style={{display:"flex",borderBottom:"1px solid #0a2a1a",background:"rgba(0,0,0,0.2)"}}>
+          {[["history","📋 Historial"],["prizes","🎁 Premios"]].map(([id,lbl])=>(
+            <button key={id} style={{
+              ...S.tab,
+              color:adminTab===id?"#00d166":"#4a7a5a",
+              borderBottom:adminTab===id?"2px solid #00d166":"2px solid transparent",
+              fontWeight:adminTab===id?700:400,
+            }} onClick={()=>{
+              setAdminTab(id);
+              if(id==="history") window.fbLoadHist().then(h => setHistory(h)).catch(() => setHistory(loadHist()));
+              if(id==="prizes") setEditPrizes(prizes.map(p=>({...p})));
+            }}>{lbl}</button>
+          ))}
+        </div>
+
+        {adminTab==="history"&&(
+          <div style={{padding:"12px 0"}}>
+            {history.length===0?(
+              <p style={{textAlign:"center",color:"#4a7a5a",fontSize:14,padding:"28px 0"}}>
+                Aún no hay participantes.
+              </p>
+            ):(
+              <>
+                <div style={{overflowX:"auto"}}>
+                  <table>
+                    <thead><tr><th>#</th><th>Nombre</th><th>Premio</th><th>Fecha/Hora</th></tr></thead>
+                    <tbody>
+                      {history.map((h,i)=>(
+                        <tr key={i}>
+                          <td style={{color:"#3a6a4a",fontSize:11}}>{history.length-i}</td>
+                          <td style={{color:"#c8e8d0",fontWeight:600}}>{h.name}<br/><span style={{color:"#00d166",fontSize:10}}>📞 {h.phone||"—"}</span></td>
+                          <td><span style={{background:"rgba(0,209,102,0.08)",border:"1px solid rgba(0,209,102,0.3)",
+                            borderRadius:6,padding:"2px 7px",color:"#00d166",fontSize:11}}>{h.prize}</span></td>
+                          <td style={{fontSize:11,color:"#3a6a4a"}}>{fmt(h.ts)}</td>
+                           <td><button onClick={()=>deletePlayer(h)} style={{background:"rgba(255,82,82,0.1)",border:"1px solid #ff5252",color:"#ff5252",borderRadius:5,padding:"3px 7px",cursor:"pointer",fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>🗑 2da oportunidad</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{padding:"14px 16px",borderTop:"1px solid #1A1008",marginTop:4}}>
+                  <p style={{...S.sub,marginBottom:10,paddingLeft:2}}>Resumen</p>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {prizes.map(p=>{
+                      const cnt=history.filter(h=>h.prize===p.label).length;
+                      if(!cnt)return null;
+                      return(
+                        <div key={p.label} style={{background:"rgba(0,209,102,0.03)",
+                          border:"1px solid #0a2010",borderRadius:9,padding:"8px 12px"}}>
+                          <div style={{fontSize:10,color:"#3a6a4a"}}>{p.label}</div>
+                          <div style={{fontSize:20,fontWeight:700,color:"#00d166"}}>
+                            {cnt}<span style={{fontSize:11,color:"#4a7a5a",fontWeight:400}}> {cnt===1?"vez":"veces"}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                {/* Contador de giros únicos */}
+                <div style={{marginTop:14,background:"rgba(0,209,102,0.07)",
+                  border:"1px solid rgba(0,209,102,0.25)",borderRadius:8,
+                  padding:"12px 16px",fontSize:13,color:"#aaa"}}>
+                  🎯 <strong style={{color:"#00d166"}}>Giros únicos en ciclo actual:</strong>&nbsp;
+                  {getSpinCount() % 100} / 100&nbsp;&nbsp;·&nbsp;&nbsp;
+                  Próximo <strong style={{color:"#00ff88"}}>TATTOO GRATIS</strong> en el giro&nbsp;
+                  <strong style={{color:"#00ff88"}}>{100 - (getSpinCount() % 100)}</strong>
+                </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {adminTab==="prizes"&&(
+          <div style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <p style={{...S.sub,margin:0}}>Total probabilidad:</p>
+              <span style={{fontWeight:700,fontSize:14,
+                color:Math.abs(totProb-100)<0.1?"#4AFF80":"#FF7070"}}>
+                {totProb.toFixed(1)}% <span style={{fontSize:10,color:"#3a6a4a"}}>(debe ser 100)</span>
+              </span>
+            </div>
+
+            {editPrizes.map((p,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5,marginBottom:7,
+                background:"rgba(0,209,102,0.03)",borderRadius:9,
+                border:"1px solid #0a2010",padding:"7px 9px"}}>
+                <input style={{...S.inpSm,flex:"1 1 80px",minWidth:0}}
+                  value={p.label} onChange={e=>updEP(i,"label",e.target.value)} maxLength={18}/>
+                <input style={{...S.inpSm,width:50,textAlign:"center"}}
+                  type="number" min="0.1" max="100" step="0.5"
+                  value={p.prob} onChange={e=>updEP(i,"prob",e.target.value)}/>
+                <span style={{fontSize:10,color:"#3a6a4a",flexShrink:0}}>%</span>
+                <input type="color" value={p.color} onChange={e=>updEP(i,"color",e.target.value)}
+                  style={{width:26,height:26,border:"1px solid #1a3a2a",borderRadius:5,
+                    cursor:"pointer",background:"none",padding:2,flexShrink:0}}/>
+                <button onClick={()=>remEP(i)}
+                  style={{background:"rgba(139,0,0,0.3)",border:"1px solid rgba(139,0,0,0.4)",
+                    borderRadius:6,color:"#FF7070",cursor:"pointer",padding:"3px 8px",
+                    fontSize:12,flexShrink:0}}>✕</button>
+              </div>
+            ))}
+
+            <div style={{background:"rgba(0,209,102,0.05)",border:"1px dashed rgba(0,209,102,0.22)",
+              borderRadius:10,padding:"12px 10px 10px",marginTop:12}}>
+              <p style={{...S.sub,marginBottom:9,color:"#00d166"}}>+ Agregar premio</p>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <input style={{...S.inpSm,flex:"1 1 90px"}}
+                  value={newLabel} onChange={e=>setNewLabel(e.target.value)}
+                  placeholder="Nombre" maxLength={18}/>
+                <input style={{...S.inpSm,width:55,textAlign:"center"}}
+                  type="number" min="0.1" max="100" step="0.5"
+                  value={newProb} onChange={e=>setNewProb(e.target.value)} placeholder="%"/>
+                <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+                  style={{width:34,height:34,border:"1px solid #1a3a2a",borderRadius:5,
+                    cursor:"pointer",background:"none",padding:2}}/>
+                <button onClick={addPrize} style={{...S.outline,padding:"7px 14px",whiteSpace:"nowrap"}}>
+                  Agregar
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:10,marginTop:14}}>
+              <button style={{...S.gold,marginTop:0,flex:1,
+                opacity:Math.abs(totProb-100)>1?0.45:1}}
+                onClick={savePrizesAdmin} disabled={Math.abs(totProb-100)>1}>
+                💾 GUARDAR PREMIOS
+              </button>
+            </div>
+            {saveMsg&&<p style={{textAlign:"center",color:"#00d166",fontSize:13,marginTop:8}}>{saveMsg}</p>}
+            {Math.abs(totProb-100)>1&&(
+              <p style={{textAlign:"center",color:"#FF7070",fontSize:12,marginTop:6}}>
+                ⚠️ Ajusta para sumar exactamente 100%
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
