@@ -205,65 +205,42 @@ body::after {
   color:var(--txt);
 }
 .cal-cell.empty { cursor:default; }
-
-/* Pasado y no laborable — solo número gris, sin recuadro */
-.cal-cell.past   { color:var(--txt3); cursor:not-allowed; background:none; border-color:transparent; }
-.cal-cell.blocked{ color:var(--txt3); cursor:not-allowed; background:none; border-color:transparent; }
-
-/* Disponible — blanco, cuadro gris sutil */
+.cal-cell.past { color:var(--txt3); cursor:not-allowed; }
+.cal-cell.blocked {
+  color:var(--txt3); cursor:not-allowed;
+  background:rgba(255,255,255,.02);
+}
+.cal-cell.blocked::after {
+  content:''; position:absolute; width:60%; height:1px;
+  background:var(--txt3); opacity:.3; border-radius:1px;
+}
 .cal-cell.available {
-  background:var(--bg3);
-  border-color:var(--line2);
+  background:var(--green-bg);
+  border-color:rgba(93,184,138,.15);
   color:var(--txt);
 }
 .cal-cell.available:hover {
-  background:var(--bg4);
-  border-color:var(--txt3);
-  transform:scale(1.06);
+  background:rgba(93,184,138,.15);
+  border-color:var(--green);
+  transform:scale(1.08);
 }
-
-/* Pendiente (alguien agendó, tú no confirmaste) — día COMPLETO bloqueado, amarillo */
 .cal-cell.has-pending {
   background:var(--amber-bg);
-  border-color:rgba(201,168,76,.35);
+  border-color:rgba(201,168,76,.2);
   color:var(--amber);
-  cursor:not-allowed;
 }
-.cal-cell.has-pending::after {
-  content:''; position:absolute;
-  bottom:4px; left:50%; transform:translateX(-50%);
-  width:4px; height:4px; border-radius:50%;
-  background:var(--amber);
-}
-
-/* Confirmado por admin — verde elegante */
-.cal-cell.confirmed-day {
-  background:var(--green-bg);
-  border-color:rgba(93,184,138,.35);
-  color:var(--green);
-  cursor:not-allowed;
-}
-.cal-cell.confirmed-day::after {
-  content:''; position:absolute;
-  bottom:4px; left:50%; transform:translateX(-50%);
-  width:4px; height:4px; border-radius:50%;
-  background:var(--green);
-}
-
-/* Lleno (todos los slots confirmados) */
 .cal-cell.full {
-  background:var(--green-bg);
-  border-color:rgba(93,184,138,.35);
-  color:var(--green); cursor:not-allowed;
+  background:rgba(255,255,255,.03);
+  border-color:var(--line);
+  color:var(--txt3); cursor:not-allowed;
 }
-
 .cal-cell.selected {
   background:var(--green);
   border-color:var(--green);
   color:#000; font-weight:600;
-  transform:scale(1.06);
+  transform:scale(1.08);
 }
-.cal-cell.today { border-color:var(--txt3); }
+.cal-cell.today { border-color:var(--green-dim); }
 
 /* ── SLOTS ── */
 .slots-wrap { padding:0 16px; animation:fadeUp .3s ease; }
@@ -1098,14 +1075,6 @@ firebase.initializeApp(firebaseConfig);
 const db   = firebase.database();
 const auth = firebase.auth();
 
-// Mantener sesión admin activa (no cerrar al recargar)
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
-
-// Mantener conexión Firebase activa en primer plano
-db.ref(".info/connected").on("value", snap => {
-  if (snap.val() === false) console.warn("Firebase: sin conexión");
-});
-
 // ═══════════════════════════════════════════════════
 // ESTADO GLOBAL
 // ═══════════════════════════════════════════════════
@@ -1165,39 +1134,50 @@ window.onload = () => {
     }
   });
 
-  // Load config from Firebase
+  // ── Cargar caché local inmediatamente (sin esperar Firebase) ──
+  try {
+    const cachedCfg = localStorage.getItem("fc_agenda_config");
+    if (cachedCfg) { config = { ...config, ...JSON.parse(cachedCfg) }; applySideImages(); applyColors(); }
+    const cachedAp = localStorage.getItem("fc_agenda_appts");
+    if (cachedAp) { appointments = JSON.parse(cachedAp); renderCalendar(); }
+  } catch(e) {}
+
+  // ── Control de primera carga ──
+  let appLoaded = false;
+  const showApp = () => {
+    if (appLoaded) return; appLoaded = true;
+    document.getElementById("loader").classList.add("hidden");
+    if (!isAdmin) showPublicApp();
+  };
+  // Si hay caché mostrar ya, sin esperar Firebase
+  if (localStorage.getItem("fc_agenda_appts")) showApp();
+
+  // ── Load config desde Firebase ──
   db.ref("agenda/config").on("value", snap => {
     const val = snap.val();
-    if (val) config = { ...config, ...val };
-    applySideImages();
-    applyColors();
-    renderAdminConfig();
+    if (val) {
+      config = { ...config, ...val };
+      localStorage.setItem("fc_agenda_config", JSON.stringify(config));
+      applySideImages(); applyColors(); renderAdminConfig();
+    }
   });
 
-  // Load appointments in real-time — mostrar app DESPUÉS de que Firebase responda
-  let appLoaded = false;
+  // ── Load appointments en tiempo real ──
   db.ref("agenda/appointments").on("value", snap => {
     appointments = snap.val() || {};
+    localStorage.setItem("fc_agenda_appts", JSON.stringify(appointments));
     expireOldAppointments();
     if (isAdmin) renderAdminRequests();
     if (selectedDate) renderSlots(selectedDate);
     renderCalendar();
-    // Primera carga: ocultar loader y mostrar app
-    if (!appLoaded) {
-      appLoaded = true;
-      document.getElementById("loader").classList.add("hidden");
-      if (!isAdmin) showPublicApp();
-    }
+    showApp();
+  }, err => {
+    console.warn("Firebase appointments error:", err.code);
+    showApp(); // mostrar con caché aunque Firebase falle
   });
 
-  // Timeout de seguridad: si Firebase tarda +5s, mostrar de todas formas
-  setTimeout(() => {
-    if (!appLoaded) {
-      appLoaded = true;
-      document.getElementById("loader").classList.add("hidden");
-      if (!isAdmin) showPublicApp();
-    }
-  }, 5000);
+  // ── Timeout de seguridad: 6s ──
+  setTimeout(showApp, 6000);
 };
 
 // ═══════════════════════════════════════════════════
@@ -1260,24 +1240,25 @@ function renderCalendar() {
     } else if (isBlocked || !isWorkDay) {
       cls += " blocked";
     } else {
-      // Un día con CUALQUIER cita (pending o confirmed) queda bloqueado completo
+      // Check appointments for this day
       const dayAppts = getDayAppointments(dateStr);
-      const hasConfirmed = dayAppts.some(a => a.status === "confirmed");
-      const hasPending   = dayAppts.some(a => a.status === "pending");
+      const totalSlots = config.hours.length;
+      const confirmedCount = dayAppts.filter(a => a.status === "confirmed").length;
+      const pendingCount   = dayAppts.filter(a => a.status === "pending").length;
 
-      if (hasConfirmed) {
-        cls += " confirmed-day"; // Verde — admin confirmó
-      } else if (hasPending) {
-        cls += " has-pending";   // Amarillo — solicitud en proceso, día bloqueado
+      if (confirmedCount >= totalSlots) {
+        cls += " full";
+      } else if (pendingCount > 0 && config.showPending) {
+        cls += " has-pending";
+        onclick = `onclick="selectDate('${dateStr}')"`;
       } else {
         cls += " available";
         onclick = `onclick="selectDate('${dateStr}')"`;
       }
     }
 
-    if (isToday && !onclick) cls += " today";
-    if (isToday &&  onclick) cls += " today";
-    if (dateStr === selectedDate) cls = cls.replace("available","selected");
+    if (isToday) cls += " today";
+    if (dateStr === selectedDate) cls = cls.replace("available","selected").replace("has-pending","selected");
 
     grid.innerHTML += `
       <div class="${cls}" ${onclick}>
@@ -1405,6 +1386,11 @@ async function submitBooking() {
   try {
     await db.ref(`agenda/appointments/${id}`).set(appt);
     bookingId = id;
+
+    // Actualizar caché local inmediatamente para reflejar el cambio sin esperar Firebase
+    appointments[id] = appt;
+    localStorage.setItem("fc_agenda_appts", JSON.stringify(appointments));
+    renderCalendar();
 
     // Show success
     document.getElementById("successDate").textContent = formatDateDisplay(selectedDate);
@@ -1577,19 +1563,13 @@ async function confirmAppointment(id) {
     async () => {
       await db.ref(`agenda/appointments/${id}/status`).set("confirmed");
       showToast("Cita confirmada ✓", "success");
-
-      // 1. WhatsApp al cliente
+      // Send WhatsApp to client
       const msg = (config.msgConfirm || "¡Tu cita fue confirmada!")
         .replace("{fecha}", formatDateDisplay(a.date))
         .replace("{hora}", a.time)
         .replace("{nombre}", a.name);
-      setTimeout(() => window.open(`https://wa.me/${a.phone}?text=${encodeURIComponent(msg)}`, "_blank"), 400);
-
-      // 2. Agregar automáticamente a Google Calendar
-      setTimeout(() => {
-        const gcalUrl = buildGCalUrl(a);
-        window.open(gcalUrl, "_blank");
-      }, 900);
+      const waUrl = `https://wa.me/${a.phone}?text=${encodeURIComponent(msg)}`;
+      setTimeout(() => window.open(waUrl, "_blank"), 500);
     }
   );
 }
@@ -1762,6 +1742,8 @@ async function saveConfig() {
   });
   applySideImages();
   applyColors();
+  // Guardar config en caché local también
+  localStorage.setItem("fc_agenda_config", JSON.stringify(config));
   // Update header
   if (config.headerSub) document.getElementById("headerSub").textContent = config.headerSub;
   showToast("Configuración guardada ✓", "success");
@@ -1877,24 +1859,13 @@ function formatDateTime(ts) {
 }
 
 function buildGCalUrl(a) {
-  // Parse time like "9:00 AM", "3:00 PM"
-  let hour = 9, minute = 0;
-  try {
-    const t = a.time.toUpperCase();
-    const [hm, ampm] = t.split(" ");
-    const [h, mn]    = hm.split(":");
-    hour   = parseInt(h);
-    minute = parseInt(mn) || 0;
-    if (ampm === "PM" && hour !== 12) hour += 12;
-    if (ampm === "AM" && hour === 12) hour  = 0;
-  } catch(e) {}
-  const pad  = n => String(n).padStart(2,"0");
-  const base = a.date.replace(/-/g,"");
-  const start = `${base}T${pad(hour)}${pad(minute)}00`;
-  const end   = `${base}T${pad(hour+2)}${pad(minute)}00`; // 2hr session
-  const title = encodeURIComponent(`Cita: ${a.name} — ${a.time}`);
-  const detail= encodeURIComponent(`Cliente: ${a.name}\nTeléfono: ${a.phone}\nHora: ${a.time}\nConfirmada en FASTER CREATIF`);
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${detail}`;
+  const [y,m,d] = a.date.split("-");
+  // Parse time — approximate 1hr session
+  const dt    = new Date(parseInt(y), parseInt(m)-1, parseInt(d), 10, 0);
+  const start = a.date.replace(/-/g,"") + "T100000";
+  const end   = a.date.replace(/-/g,"") + "T110000";
+  const title = encodeURIComponent(`Cita ${a.name} — ${a.time}`);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${encodeURIComponent("Cita confirmada en FASTER CREATIF")}`;
 }
 
 function showToast(msg, type="") {
@@ -1924,22 +1895,18 @@ PASO 2 — Actualizar reglas de Firebase Database:
   {
     "rules": {
       "agenda": {
-        "config": {
-          ".read": true,
-          ".write": "auth != null"
-        },
-        "appointments": {
-          ".read": "auth != null",
-          ".write": true,
-          "$id": {
-            ".read": true
-          }
-        }
+        "config":       { ".read": true, ".write": "auth != null" },
+        "appointments": { ".read": true, ".write": true }
       },
       "reservas": { ".read": true, ".write": true },
       "ruleta":   { ".read": true, ".write": true }
     }
   }
+
+  ⚠️ MUY IMPORTANTE: La regla ".read": true en appointments es necesaria
+  para que los cambios se vean en tiempo real sin recargar la página.
+  Los datos privados (nombre, teléfono) NUNCA se muestran públicamente
+  — solo tú los ves en el panel admin.
 
 PASO 3 — Subir a GitHub Pages (igual que siempre).
 
