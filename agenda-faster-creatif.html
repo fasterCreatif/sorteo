@@ -941,6 +941,28 @@ body::after {
       </div>
 
       <div class="config-section">
+        <div class="config-section-title">Horario por día</div>
+        <div style="font-size:.78em;color:var(--txt2);margin-bottom:14px;line-height:1.5">
+          Personaliza los horarios disponibles para un día específico.<br>
+          Si no configuras nada, ese día usará el horario general de arriba.
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="date" class="admin-input" id="customDayInput" style="flex:1">
+          <button class="btn btn-confirm-admin btn-sm" onclick="loadCustomDayHours()">Ver día</button>
+        </div>
+        <div id="customDayPanel" style="display:none">
+          <div style="font-size:.75em;color:var(--green);letter-spacing:1px;margin-bottom:10px" id="customDayLabel"></div>
+          <div style="font-size:.75em;color:var(--txt3);margin-bottom:8px">Toca un horario para activarlo/desactivarlo para este día:</div>
+          <div class="hours-list" id="customDayHoursList"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-confirm-admin btn-sm" onclick="saveCustomDayHours()">Guardar horario del día</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCustomDayHours()">Restablecer general</button>
+          </div>
+        </div>
+        <div id="customDaysList" style="margin-top:14px"></div>
+      </div>
+
+      <div class="config-section">
         <div class="config-section-title">Bloquear fechas específicas</div>
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <input type="date" class="admin-input" id="blockDateInput" style="flex:1">
@@ -1088,7 +1110,8 @@ let config = {
   showPending:    true,
   workDays:       [1,2,3,4,5],   // 0=Dom … 6=Sab
   hours:          ["9:00 AM","11:00 AM","1:00 PM","3:00 PM","5:00 PM"],
-  blockedDates:   {}
+  blockedDates:   {},
+  customHours:    {}   // { "2025-06-30": ["9:00 AM","3:00 PM"], ... }
 };
 
 let appointments  = {};
@@ -1134,50 +1157,29 @@ window.onload = () => {
     }
   });
 
-  // ── Cargar caché local inmediatamente (sin esperar Firebase) ──
-  try {
-    const cachedCfg = localStorage.getItem("fc_agenda_config");
-    if (cachedCfg) { config = { ...config, ...JSON.parse(cachedCfg) }; applySideImages(); applyColors(); }
-    const cachedAp = localStorage.getItem("fc_agenda_appts");
-    if (cachedAp) { appointments = JSON.parse(cachedAp); renderCalendar(); }
-  } catch(e) {}
-
-  // ── Control de primera carga ──
-  let appLoaded = false;
-  const showApp = () => {
-    if (appLoaded) return; appLoaded = true;
-    document.getElementById("loader").classList.add("hidden");
-    if (!isAdmin) showPublicApp();
-  };
-  // Si hay caché mostrar ya, sin esperar Firebase
-  if (localStorage.getItem("fc_agenda_appts")) showApp();
-
-  // ── Load config desde Firebase ──
+  // Load config from Firebase
   db.ref("agenda/config").on("value", snap => {
     const val = snap.val();
-    if (val) {
-      config = { ...config, ...val };
-      localStorage.setItem("fc_agenda_config", JSON.stringify(config));
-      applySideImages(); applyColors(); renderAdminConfig();
-    }
+    if (val) config = { ...config, ...val };
+    applySideImages();
+    applyColors();
+    renderAdminConfig();
   });
 
-  // ── Load appointments en tiempo real ──
+  // Load appointments in real-time
   db.ref("agenda/appointments").on("value", snap => {
     appointments = snap.val() || {};
-    localStorage.setItem("fc_agenda_appts", JSON.stringify(appointments));
     expireOldAppointments();
     if (isAdmin) renderAdminRequests();
     if (selectedDate) renderSlots(selectedDate);
     renderCalendar();
-    showApp();
-  }, err => {
-    console.warn("Firebase appointments error:", err.code);
-    showApp(); // mostrar con caché aunque Firebase falle
   });
 
-  // ── Timeout de seguridad: 6s ──
-  setTimeout(showApp, 6000);
+  // Show public app
+  setTimeout(() => {
+    document.getElementById("loader").classList.add("hidden");
+    showPublicApp();
+  }, 800);
 };
 
 // ═══════════════════════════════════════════════════
@@ -1315,8 +1317,12 @@ function renderSlots(dateStr) {
   grid.innerHTML = "";
 
   const dayAppts = getDayAppointments(dateStr);
+  // Usar horario personalizado del día si existe, si no el general
+  const hoursToShow = (config.customHours && config.customHours[dateStr])
+    ? config.customHours[dateStr]
+    : config.hours;
 
-  config.hours.forEach(hour => {
+  hoursToShow.forEach(hour => {
     const appt = dayAppts.find(a => a.time === hour);
     let cls = "slot-card";
     let statusText = "Disponible";
@@ -1386,11 +1392,6 @@ async function submitBooking() {
   try {
     await db.ref(`agenda/appointments/${id}`).set(appt);
     bookingId = id;
-
-    // Actualizar caché local inmediatamente para reflejar el cambio sin esperar Firebase
-    appointments[id] = appt;
-    localStorage.setItem("fc_agenda_appts", JSON.stringify(appointments));
-    renderCalendar();
 
     // Show success
     document.getElementById("successDate").textContent = formatDateDisplay(selectedDate);
@@ -1610,6 +1611,8 @@ function renderAdminCalendar() {
 
   // Blocked dates
   renderBlockedDates();
+  // Custom day hours list
+  renderCustomDaysList();
 }
 
 function renderAdminHours() {
@@ -1648,6 +1651,97 @@ function removeHour(h) {
   db.ref("agenda/config/hours").set(config.hours);
   renderAdminHours();
 }
+
+// ── HORARIO POR DÍA ──
+let customDayEditing = null;
+
+function loadCustomDayHours() {
+  const dateStr = document.getElementById("customDayInput").value;
+  if (!dateStr) return showToast("Selecciona un día", "error");
+  customDayEditing = dateStr;
+  const panel = document.getElementById("customDayPanel");
+  const label = document.getElementById("customDayLabel");
+  label.textContent = formatDateDisplay(dateStr).toUpperCase();
+  panel.style.display = "block";
+  renderCustomDayEditor(dateStr);
+}
+
+function renderCustomDayEditor(dateStr) {
+  const list = document.getElementById("customDayHoursList");
+  // Horarios activos para este día (custom si existe, si no el general)
+  const active = (config.customHours && config.customHours[dateStr])
+    ? [...config.customHours[dateStr]]
+    : [...config.hours];
+  // Mostrar TODOS los horarios generales como base, marcando cuáles están activos
+  list.innerHTML = config.hours.map(h => `
+    <div class="hour-chip ${active.includes(h) ? "active" : ""}"
+         onclick="toggleCustomHour('${dateStr}','${h}',this)">
+      ${h}
+    </div>`).join("");
+}
+
+function toggleCustomHour(dateStr, hour, el) {
+  if (!config.customHours) config.customHours = {};
+  if (!config.customHours[dateStr]) config.customHours[dateStr] = [...config.hours];
+  const arr = config.customHours[dateStr];
+  const idx = arr.indexOf(hour);
+  if (idx >= 0) { arr.splice(idx, 1); el.classList.remove("active"); }
+  else           { arr.push(hour);    el.classList.add("active"); }
+}
+
+function saveCustomDayHours() {
+  if (!customDayEditing) return;
+  if (!config.customHours) config.customHours = {};
+  const arr = config.customHours[customDayEditing];
+  if (!arr || arr.length === 0) {
+    showToast("Selecciona al menos un horario", "error"); return;
+  }
+  db.ref(`agenda/config/customHours/${customDayEditing}`).set(arr);
+  localStorage.setItem("fc_agenda_config", JSON.stringify(config));
+  showToast("Horario del día guardado ✓", "success");
+  renderCustomDaysList();
+  if (selectedDate === customDayEditing) renderSlots(customDayEditing);
+}
+
+function deleteCustomDayHours() {
+  if (!customDayEditing) return;
+  if (config.customHours) delete config.customHours[customDayEditing];
+  db.ref(`agenda/config/customHours/${customDayEditing}`).remove();
+  localStorage.setItem("fc_agenda_config", JSON.stringify(config));
+  document.getElementById("customDayPanel").style.display = "none";
+  document.getElementById("customDayInput").value = "";
+  customDayEditing = null;
+  showToast("Restablecido al horario general");
+  renderCustomDaysList();
+}
+
+function renderCustomDaysList() {
+  const wrap = document.getElementById("customDaysList");
+  if (!wrap) return;
+  const days = Object.keys(config.customHours || {}).sort();
+  if (!days.length) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `
+    <div style="font-size:.72em;color:var(--txt3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">
+      Días con horario personalizado
+    </div>` +
+    days.map(d => `
+      <div class="blocked-item">
+        <div>
+          <div style="font-size:.85em;color:var(--txt2)">${formatDateDisplay(d)}</div>
+          <div style="font-size:.72em;color:var(--green);margin-top:2px">${(config.customHours[d]||[]).join(" · ")}</div>
+        </div>
+        <button class="blocked-remove" onclick="quickDeleteCustomDay('${d}')">✕</button>
+      </div>`).join("");
+}
+
+function quickDeleteCustomDay(dateStr) {
+  if (config.customHours) delete config.customHours[dateStr];
+  db.ref(`agenda/config/customHours/${dateStr}`).remove();
+  localStorage.setItem("fc_agenda_config", JSON.stringify(config));
+  renderCustomDaysList();
+  showToast("Restablecido al horario general");
+}
+// ── FIN HORARIO POR DÍA ──
 
 function addBlockedDate() {
   const val = document.getElementById("blockDateInput").value;
@@ -1742,8 +1836,6 @@ async function saveConfig() {
   });
   applySideImages();
   applyColors();
-  // Guardar config en caché local también
-  localStorage.setItem("fc_agenda_config", JSON.stringify(config));
   // Update header
   if (config.headerSub) document.getElementById("headerSub").textContent = config.headerSub;
   showToast("Configuración guardada ✓", "success");
@@ -1895,18 +1987,22 @@ PASO 2 — Actualizar reglas de Firebase Database:
   {
     "rules": {
       "agenda": {
-        "config":       { ".read": true, ".write": "auth != null" },
-        "appointments": { ".read": true, ".write": true }
+        "config": {
+          ".read": true,
+          ".write": "auth != null"
+        },
+        "appointments": {
+          ".read": "auth != null",
+          ".write": true,
+          "$id": {
+            ".read": true
+          }
+        }
       },
       "reservas": { ".read": true, ".write": true },
       "ruleta":   { ".read": true, ".write": true }
     }
   }
-
-  ⚠️ MUY IMPORTANTE: La regla ".read": true en appointments es necesaria
-  para que los cambios se vean en tiempo real sin recargar la página.
-  Los datos privados (nombre, teléfono) NUNCA se muestran públicamente
-  — solo tú los ves en el panel admin.
 
 PASO 3 — Subir a GitHub Pages (igual que siempre).
 
