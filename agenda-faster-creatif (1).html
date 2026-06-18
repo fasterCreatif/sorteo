@@ -1310,6 +1310,23 @@ window.onload = () => {
     renderAdminConfig();
   });
 
+  // Load customHours in real-time
+  db.ref("agenda/config/customHours").on("value", snap => {
+    const val = snap.val();
+    if (val) config.customHours = val;
+    if (selectedDate) renderSlots(selectedDate);
+    renderCalendar();
+    if (isAdmin) renderCustomDaysList();
+  });
+
+  // Load blockedDates in real-time
+  db.ref("agenda/config/blockedDates").on("value", snap => {
+    const val = snap.val();
+    if (val) config.blockedDates = val;
+    renderCalendar();
+    if (isAdmin) renderBlockedDates();
+  });
+
   // Load appointments in real-time
   db.ref("agenda/appointments").on("value", snap => {
     appointments = snap.val() || {};
